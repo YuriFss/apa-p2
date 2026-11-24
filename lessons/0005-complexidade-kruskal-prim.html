@@ -39,6 +39,7 @@
     <li><a href="#heap">Lembrete: o heap nunca desbalanceia</a></li>
     <li><a href="#prim">Prim com heap, contando operações</a></li>
     <li><a href="#primcusto">Prim, linha por linha</a></li>
+    <li><a href="#dijkstra">Do Prim ao caminho mínimo</a></li>
     <li><a href="#resumo">Resumo</a></li>
     <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
   </ol>
@@ -190,12 +191,59 @@
 <p>Com matriz, o Prim custa $O(V^2 + A \log V)$. Num grafo esparso (poucas arestas) isso é bem pior que $O(A \log V)$.</p>
 <p class="caption">O slide também cita o heap de Fibonacci, com o qual o Prim custa $O(A + V \log V)$. Basta saber que existe.</p>
 
-<h2 id="resumo">7. Resumo</h2>
+<h2 id="dijkstra">7. Do Prim ao caminho mínimo (Dijkstra)</h2>
+<p>Outro problema: achar o <b>caminho mais curto</b> de uma origem s até cada vértice. Basta mudar o que a chave guarda.</p>
+<ul>
+  <li><b>Prim:</b> chave[v] = peso da aresta mais barata que liga v à árvore.</li>
+  <li><b>Dijkstra:</b> d[v] = comprimento do caminho mais curto conhecido de s até v.</li>
+</ul>
+<p>Só as linhas 9 a 11 mudam:</p>
+<div class="algo" style="grid-template-columns:1fr 1fr">
+<pre class="panel"><span class="zero">▸ Prim</span>
+9.  <span class="kw">if</span> v ∈ Q <span class="kw">and</span> w(u, v) &lt; chave[v]
+10.     pai[v] = u
+11.     chave[v] = w(u, v)</pre>
+<pre class="panel"><span class="zero">▸ Dijkstra</span>
+9.  <span class="kw">if</span> v ∈ Q <span class="kw">and</span> d[u] + w(u, v) &lt; d[v]
+10.     pai[v] = u
+11.     d[v] = d[u] + w(u, v)</pre>
+</div>
+<p><b>Exemplo resolvido</b>, origem A, no mesmo grafo:</p>
+<div class="table-wrap"><table>
+<tr><th>Extrai</th><th>Vizinhos ainda em Q</th></tr>
+<tr><td>A (d = 0)</td><td>C: 0 + 1 = <b>1</b>. B: 0 + 4 = <b>4</b>.</td></tr>
+<tr><td>C (d = 1)</td><td>B: 1 + 2 = 3 &lt; 4, então <b>3</b> (pai C). D: 1 + 8 = <b>9</b>. E: 1 + 6 = <b>7</b>.</td></tr>
+<tr><td>B (d = 3)</td><td>D: 3 + 5 = 8 &lt; 9, então <b>8</b> (pai B).</td></tr>
+<tr><td>E (d = 7)</td><td>D: 7 + 3 = 10. Não é menor que 8.</td></tr>
+<tr><td>D (d = 8)</td><td>nenhum.</td></tr>
+</table></div>
+<div class="figrow">
+  <div>
+    <div id="figMST"></div>
+    <p class="caption"><b>Prim (AGM):</b> soma 11. Minimiza o total das arestas.</p>
+  </div>
+  <div>
+    <div id="figSPT"></div>
+    <p class="caption"><b>Dijkstra (origem A):</b> soma 14. Minimiza a distância de A até cada vértice.</p>
+  </div>
+</div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <ul>
+    <li>Dijkstra exige pesos <b>não negativos</b>.</li>
+    <li>Mesmo custo do Prim: $O(A \log V)$ com listas + heap binário.</li>
+    <li>A árvore de caminhos mínimos em geral <b>não</b> é a AGM. Aqui, E fica ligado a C (A → C → E = 7), e não a D (A → C → B → D → E = 11).</li>
+  </ul>
+</div>
+<p class="caption">Fonte: <a href="https://users.ime.usp.br/~cris/aulas/16_1_338/slides/aula19.pdf">IME-USP, slides de Análise de Algoritmos, aula 19 (Prim e Dijkstra)</a>; Cormen, 3ª ed., seção 24.3.</p>
+
+<h2 id="resumo">8. Resumo</h2>
 <div class="table-wrap"><table>
 <tr><th>Algoritmo</th><th>Implementação</th><th>Custo</th><th>O que domina</th></tr>
 <tr><td>Kruskal</td><td>listas + conjuntos disjuntos (rank + compressão)</td><td>$O(A \lg A)$</td><td>ordenar as arestas</td></tr>
 <tr><td>Prim</td><td>listas + heap binário</td><td>$O(A \log V)$</td><td>decreaseKey (até A vezes)</td></tr>
 <tr><td>Prim</td><td>matriz + heap binário</td><td>$O(V^2 + A \log V)$</td><td>percorrer as linhas da matriz</td></tr>
+<tr><td>Dijkstra</td><td>listas + heap binário</td><td>$O(A \log V)$</td><td>igual ao Prim</td></tr>
 </table></div>
 <p>Kruskal e Prim têm a mesma ordem. Como $A \le V^2$, temos $\lg A \le 2 \lg V$. Então $O(A \lg A) = O(A \log V)$.</p>
 <div class="box prof">
@@ -207,10 +255,10 @@
   </ol>
 </div>
 
-<h2 id="quiz">8. Quiz</h2>
+<h2 id="quiz">9. Quiz</h2>
 <div id="quiz"></div>
 
-<h2 id="exercicio">9. Exercício</h2>
+<h2 id="exercicio">10. Exercício</h2>
 <div class="exercise">
   <span class="tag">Exercício 11.5</span>
   <p>Grafo com V = 6 e A = 9: a–b 3, a–c 5, b–c 1, b–d 6, c–d 2, c–e 7, d–e 4, d–f 8, e–f 3.</p>
@@ -266,6 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const fv = Forest.view({ showArray: false }); document.getElementById('figList').append(fv.el);
   fv.set({ pai: [0, 0, 1, 2, 3, 4, 5], marks: { 0: 'root' } }, false);
 
+  document.getElementById('figMST').append(GraphView.render(G, { edge: { 'A-C': 'ok', 'B-C': 'ok', 'D-E': 'ok', 'B-D': 'ok' } }));
+  document.getElementById('figSPT').append(GraphView.render(G, { edge: { 'A-C': 'ok', 'B-C': 'ok', 'C-E': 'ok', 'B-D': 'ok' }, tags: { A: 'd=0', C: 'd=1', B: 'd=3', E: 'd=7', D: 'd=8' } }));
   StepPlayer.mount(document.getElementById('primPlayer'), { code: PrimHeap.CODE, stack: true, speed: 1300,
     steps: PrimHeap.trace(G, 'A'), extra: (st, box) => PrimHeap.draw(G, st, box) });
 
@@ -285,6 +335,9 @@ document.addEventListener('DOMContentLoaded', () => {
     { q: 'Prim com listas + heap binário custa…',
       options: ['$O(A \\log V)$', '$O(V^2)$', '$O(A + V \\log V)$', '$O(V \\log A)$'], answer: 0,
       explain: 'O(V log V) dos extractMin + O(A log V) dos decreaseKey.' },
+    { q: 'O que muda do Prim para o Dijkstra?',
+      options: ['a chave vira d[u] + w(u, v)', 'a fila Q vira uma pilha', 'as arestas são ordenadas', 'o heap vira heap máximo'], answer: 0,
+      explain: 'A chave guarda a distância acumulada desde a origem, não o peso de uma aresta.' },
     { q: 'Com matriz de adjacência, por que o Prim fica com um termo $V^2$?',
       options: ['a linha 8 percorre V células por vértice', 'o heap fica desbalanceado', 'decreaseKey custa V', 'extractMin custa V'], answer: 0,
       explain: 'Achar os vizinhos de u exige olhar a linha inteira de u: V vezes V.' },

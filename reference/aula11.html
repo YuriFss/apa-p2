@@ -35,6 +35,7 @@
 <tr><td>Union by rank</td><td>Pendurar a raiz de menor rank na de maior rank; empate: rank da nova raiz +1.</td></tr>
 <tr><td>Path compression</td><td>No findSet, cada nó do caminho passa a apontar direto para a raiz.</td></tr>
 <tr><td>α(n)</td><td>Inversa da função de Ackermann; cresce tão devagar que α(n) ≤ 4 na prática.</td></tr>
+<tr><td>Dijkstra</td><td>Caminho mínimo de origem única: o Prim com a chave trocada por d[u] + w(u, v).</td></tr>
 <tr><td>União ponderada</td><td>Com listas ligadas: guardar size e anexar a lista menor à maior.</td></tr>
 </table></div>
 
@@ -109,6 +110,7 @@ Sx.size = Sx.size + Sy.size                   ▸ só na ponderada
 <tr><td>Prim (listas + heap)</td><td>$O(A \log V)$</td><td>V extractMin + até A decreaseKey, cada $O(\log V)$; 2A visitas em Adj</td></tr>
 <tr><td>Prim (matriz + heap)</td><td>$O(V^2 + A\log V)$</td><td>linha 8 olha V células por vértice</td></tr>
 <tr><td>Prim (heap de Fibonacci)</td><td>$O(A + V\log V)$</td><td>só citado no slide</td></tr>
+<tr><td>Dijkstra (listas + heap)</td><td>$O(A \log V)$</td><td>Prim com chave d[v] = d[u] + w(u, v); pesos ≥ 0; a árvore não é a AGM</td></tr>
 </table></div>
 <p class="caption">Heap binário: altura ⌊log₂ n⌋ sempre (nunca desbalanceia). $\lg A \le 2\lg V$, então Kruskal e Prim têm a mesma ordem.</p>
 
