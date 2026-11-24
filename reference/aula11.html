@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Referência · Aula 11</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Folha de referência · Aula 11</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<h1>Aula 11: Árvore Geradora Mínima</h1>
+
+<h2>Glossário</h2>
+<div class="table-wrap"><table>
+<tr><th>Termo</th><th>Significado</th></tr>
+<tr><td>Subgrafo gerador</td><td>Mesmos vértices de G, subconjunto das arestas.</td></tr>
+<tr><td>Árvore geradora</td><td>Subgrafo gerador conexo e acíclico. Tem exatamente $V-1$ arestas.</td></tr>
+<tr><td>AGM (árvore geradora mínima)</td><td>Árvore geradora com a menor soma de pesos. Também chamada de árvore espalhada mínima.</td></tr>
+<tr><td>Aresta segura (Kruskal)</td><td>Aresta que não cria ciclo na solução atual.</td></tr>
+<tr><td>Conjuntos disjuntos</td><td>Coleção de conjuntos sem elementos em comum. No Kruskal, cada árvore da floresta é um conjunto.</td></tr>
+<tr><td>Representante</td><td>Elemento que identifica o conjunto. Com listas ligadas é o head; na floresta é a raiz.</td></tr>
+<tr><td>makeSet / findSet / union</td><td>Cria um conjunto unitário / devolve o representante / junta dois conjuntos.</td></tr>
+<tr><td>Floresta</td><td>Conjunto de árvores; cada conjunto é uma árvore guardada no vetor pai.</td></tr>
+<tr><td>Rank</td><td>Valor guardado por elemento; para a raiz, a altura da sua árvore (sem path compression).</td></tr>
+<tr><td>Union by rank</td><td>Pendurar a raiz de menor rank na de maior rank; empate: rank da nova raiz +1.</td></tr>
+<tr><td>Path compression</td><td>No findSet, cada nó do caminho passa a apontar direto para a raiz.</td></tr>
+<tr><td>α(n)</td><td>Inversa da função de Ackermann; cresce tão devagar que α(n) ≤ 4 na prática.</td></tr>
+<tr><td>União ponderada</td><td>Com listas ligadas: guardar size e anexar a lista menor à maior.</td></tr>
+</table></div>
+
+<h2>Kruskal: chamadas à estrutura</h2>
+<ul>
+  <li>makeSet: $V$ vezes (uma por vértice).</li>
+  <li>findSet: 2 por aresta examinada, ou seja $2A$.</li>
+  <li>union: $V-1$ vezes (uma por aresta aceita).</li>
+</ul>
+
+<h2>Implementação 1: listas ligadas</h2>
+<ul>
+  <li>Conjunto S: <b>head</b>, <b>tail</b> (+ <b>size</b> na união ponderada). Nó: <b>valor</b>, <b>next</b>, <b>rep</b> → S. Representante = head.</li>
+  <li>Vetor <b>ptr</b>[x] → nó de x (acesso O(1) pela chave).</li>
+</ul>
+<pre class="code"><span class="fn">union</span>(x, y)
+Sx = findSet(x); Sy = findSet(y)
+<span class="kw">if</span> Sx.size &lt; Sy.size <span class="kw">then</span> trocar(Sx, Sy)   ▸ só na ponderada
+Sx.tail.next = Sy.head
+Sx.tail = Sy.tail
+Sx.size = Sx.size + Sy.size                   ▸ só na ponderada
+<span class="kw">for each</span> z em Sy <span class="kw">do</span> z.rep = Sx                ▸ domina: O(|Sy|)</pre>
+
+<h2>Complexidades (pior caso)</h2>
+<div class="table-wrap"><table>
+<tr><th>Função</th><th class="num">Listas ligadas</th><th class="num">Floresta</th><th class="num">+ union by rank</th></tr>
+<tr><td>makeSet</td><td class="num">$O(1)$</td><td class="num">$O(1)$</td><td class="num">$O(1)$</td></tr>
+<tr><td>findSet</td><td class="num">$O(1)$ (com ptr; sem ptr, $O(n)$)</td><td class="num">$O(n)$ pior (lista); $O(1)$ melhor (x raiz)</td><td class="num">$O(\log n)$</td></tr>
+<tr><td>union</td><td class="num">$O(n)$, mesmo com união ponderada</td><td class="num">$O(n)$ (dominado pelos 2 findSet)</td><td class="num">$O(\log n)$</td></tr>
+</table></div>
+
+<h2>Implementação 2: floresta (vetor pai)</h2>
+<ul>
+  <li>Cada conjunto é uma árvore; nó aponta para o pai; <b>raiz: pai[r] = r</b>; raiz = representante.</li>
+  <li>Ler o array: raízes são os i com pai[i] = i; seta i → pai[i].</li>
+  <li>findSet faz profundidade(x) + 1 chamadas.</li>
+</ul>
+<pre class="code"><span class="fn">makeSet</span>(x): pai[x] = x
+<span class="fn">findSet</span>(x)
+  <span class="kw">if</span> pai[x] = x <span class="kw">then return</span> x
+  <span class="kw">return</span> findSet(pai[x])
+<span class="fn">union</span>(x, y): pai[findSet(x)] = findSet(y)      ▸ raiz → raiz</pre>
+<h2>Union by rank</h2>
+<pre class="code"><span class="fn">makeSet</span>(x): pai[x] = x; rank[x] = 0
+<span class="fn">union</span>(x, y)
+  rx = findSet(x); ry = findSet(y); <span class="kw">if</span> rx = ry <span class="kw">return</span>
+  <span class="kw">if</span> rank[rx] &lt; rank[ry]: pai[rx] = ry
+  <span class="kw">else if</span> rank[rx] &gt; rank[ry]: pai[ry] = rx
+  <span class="kw">else</span>: pai[rx] = ry; rank[ry]++        ▸ só o empate aumenta o rank</pre>
+<ul>
+  <li>rank da raiz = altura da árvore (sem path compression). Só ranks de <b>raízes</b> são comparados.</li>
+  <li>Altura h exige ≥ $2^h$ nós (só sobe unindo duas de altura h−1) ⇒ $2^h \le n$ ⇒ $h \le \log_2 n$.</li>
+</ul>
+<h2>Path compression</h2>
+<pre class="code"><span class="fn">findSet</span>(x)
+  <span class="kw">if</span> pai[x] ≠ x <span class="kw">then</span>
+      pai[x] = findSet(pai[x])      ▸ na volta: aponta direto para a raiz
+  <span class="kw">return</span> pai[x]</pre>
+<ul>
+  <li>Só altera <code>pai</code> dos nós do caminho; rank não muda e vira <b>limite superior</b> da altura.</li>
+  <li>Rank + compressão: 1 chamada ainda $O(\log n)$ no pior caso; $m$ operações $O(m\,\alpha(n))$; $\alpha(n) \le 4$ na prática (α = inversa de Ackermann).</li>
+  <li>α: n = 2, 3, 7, 2047, 10⁶, 10⁸⁰ → 0, 1, 2, 3, 4, 4.</li>
+</ul>
+<p class="caption">union errados: pai[x] = y (ancestrais de x ficam fora); pai[findSet(x)] = y (correto, mas a árvore fica alta).</p>
+
+<h2>Complexidade de Kruskal e Prim</h2>
+<div class="table-wrap"><table>
+<tr><th>O quê</th><th>Custo</th><th>Por quê</th></tr>
+<tr><td>Listar arestas: matriz</td><td>$O(V^2)$</td><td>olha todas as células</td></tr>
+<tr><td>Listar arestas: listas</td><td>$O(V + A)$</td><td>V cabeças + 2A itens</td></tr>
+<tr><td>Kruskal</td><td>$O(A \lg A)$</td><td>$O(V) + O(A\lg A)$ ordenação $+ O(A\,\alpha(V))$; $A \ge V-1$</td></tr>
+<tr><td>Prim (listas + heap)</td><td>$O(A \log V)$</td><td>V extractMin + até A decreaseKey, cada $O(\log V)$; 2A visitas em Adj</td></tr>
+<tr><td>Prim (matriz + heap)</td><td>$O(V^2 + A\log V)$</td><td>linha 8 olha V células por vértice</td></tr>
+<tr><td>Prim (heap de Fibonacci)</td><td>$O(A + V\log V)$</td><td>só citado no slide</td></tr>
+</table></div>
+<p class="caption">Heap binário: altura ⌊log₂ n⌋ sempre (nunca desbalanceia). $\lg A \le 2\lg V$, então Kruskal e Prim têm a mesma ordem.</p>
+
+<h2>Lições</h2>
+<ul><li><a href="../lessons/0001-conjuntos-disjuntos-listas.html">11.1 Conjuntos disjuntos com listas ligadas</a></li><li><a href="../lessons/0002-floresta-conjuntos-disjuntos.html">11.2 Floresta de conjuntos disjuntos</a></li><li><a href="../lessons/0003-union-by-rank.html">11.3 Union by rank</a></li><li><a href="../lessons/0004-path-compression.html">11.4 Path compression e α(n)</a></li><li><a href="../lessons/0005-complexidade-kruskal-prim.html">11.5 Complexidade do Kruskal e do Prim</a></li></ul>
+</main>
+</body>
+</html>

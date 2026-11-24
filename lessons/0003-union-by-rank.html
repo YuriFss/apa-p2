@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11.3 · Union by rank</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/forest.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Árvore Geradora Mínima</span>
+  <span class="spacer"></span>
+  <a href="../reference/aula11.html">Folha de referência</a>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Lição 3</p>
+<h1>Union by rank</h1>
+<p class="lead">Primeira heurística da floresta. Ela decide <b>qual raiz fica embaixo</b> no union e, com isso, garante altura $\le \log_2 n$. Assim findSet e union passam de $O(n)$ para $O(\log n)$.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#aquec">Aquecimento (Lições 11.1 e 11.2)</a></li>
+    <li><a href="#prob">O problema: quem fica embaixo importa</a></li>
+    <li><a href="#rank">O que é o rank e o pseudocódigo</a></li>
+    <li><a href="#casos">Os três casos, animados</a></li>
+    <li><a href="#slide">A simulação do slide: 8 elementos, 7 unions</a></li>
+    <li><a href="#log">Por que a altura nunca passa de log₂ n</a></li>
+    <li><a href="#custo">Novas complexidades</a></li>
+    <li><a href="#lab">Laboratório: com e sem rank</a></li>
+    <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="aquec">1. Aquecimento (Lições 11.1 e 11.2)</h2>
+<p>Responda de memória antes de continuar. Recuperar o que você viu ontem é o que fixa o conteúdo.</p>
+<div id="warm"></div>
+
+<h2 id="prob">2. O problema: quem fica embaixo importa</h2>
+<p>Na Lição 11.2, o union do slide faz <code>pai[findSet(x)] = findSet(y)</code>: a raiz de x <b>sempre</b> vai para baixo da raiz de y. Ele ignora o tamanho das árvores. Veja as duas formas de juntar estas árvores:</p>
+<div id="figBefore"></div>
+<p class="caption" style="text-align:center">Antes: árvore de raiz 2 com altura 2 e árvore de raiz 5 com altura 1.</p>
+<div class="figrow">
+  <div>
+    <div id="figGood"></div>
+    <p class="caption"><b>pai[5] = 2</b>: a mais baixa embaixo da mais alta. Os nós da árvore do 5 descem 1 nível e ficam na profundidade 1 + 1 = 2. <b>Altura continua 2.</b></p>
+  </div>
+  <div>
+    <div id="figBad"></div>
+    <p class="caption"><b>pai[2] = 5</b>: a mais alta embaixo da mais baixa. O nó 1, que estava na profundidade 2, vai para 3. <b>Altura sobe para 3.</b></p>
+  </div>
+</div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Pendurar uma árvore embaixo de uma raiz aumenta em 1 a profundidade de <b>todos</b> os nós dela. Se ela for a mais baixa, isso não ultrapassa a altura da mais alta. É a mesma ideia da <b>união ponderada</b> das listas (Lição 11.1: anexar a menor à maior). Aqui a medida não é o tamanho, é a <b>altura</b>.</p>
+</div>
+
+<h2 id="rank">3. O que é o rank e o pseudocódigo</h2>
+<div class="box def">
+  <span class="tag">Definição (slide "Union by rank")</span>
+  <ul>
+    <li>Além de <code>pai[x]</code>, cada elemento guarda <code>rank[x]</code>.</li>
+    <li>Para uma <b>raiz</b>, o rank é a <b>altura</b> da sua árvore (a profundidade do nó mais fundo).</li>
+    <li>O rank só importa para raízes: o union só compara ranks de raízes. Quando um nó deixa de ser raiz, o rank dele nunca mais é lido nem alterado.</li>
+    <li><b>union(x, y):</b> acha as duas raízes e faz a de <b>menor rank</b> apontar para a de <b>maior rank</b>.</li>
+  </ul>
+</div>
+<div class="algo" style="grid-template-columns:1fr 1.4fr">
+<pre class="panel"><span class="fn">makeSet</span>(x)
+1.  pai[x] = x
+2.  rank[x] = 0      <span class="zero">▸ 1 nó: altura 0</span></pre>
+<pre class="panel"><span class="fn">union</span>(x, y)
+1.  rx = findSet(x)
+2.  ry = findSet(y)
+3.  <span class="kw">if</span> rx = ry <span class="kw">then return</span>
+4.  <span class="kw">if</span> rank[rx] &lt; rank[ry] <span class="kw">then</span>
+5.      pai[rx] = ry          <span class="zero">▸ rx é a mais baixa</span>
+6.  <span class="kw">else if</span> rank[rx] &gt; rank[ry] <span class="kw">then</span>
+7.      pai[ry] = rx          <span class="zero">▸ ry é a mais baixa</span>
+8.  <span class="kw">else</span>                      <span class="zero">▸ empate</span>
+9.      pai[rx] = ry
+10.     rank[ry] = rank[ry] + 1</pre>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Caso</th><th>Quem vai para baixo</th><th>Rank muda?</th><th>Por quê</th></tr>
+<tr><td>rank[rx] &lt; rank[ry]</td><td>rx (embaixo de ry)</td><td>não</td><td>A árvore de rx tem altura ≤ rank[ry] − 1. Pendurada, seus nós chegam no máximo à profundidade rank[ry], que já era a altura.</td></tr>
+<tr><td>rank[rx] &gt; rank[ry]</td><td>ry (embaixo de rx)</td><td>não</td><td>Simétrico.</td></tr>
+<tr><td>iguais (= r)</td><td>rx (por convenção)</td><td><b>rank[ry] = r + 1</b></td><td>Os nós mais fundos de rx estavam na profundidade r e agora ficam em r + 1. A altura sobe 1.</td></tr>
+</table></div>
+<p>No empate qualquer escolha serve, desde que se incremente o rank da raiz que ficou em cima. A convenção acima é a do slide (e do Cormen): a raiz de x desce.</p>
+
+<h2 id="casos">4. Os três casos, animados</h2>
+<div class="widget">
+  <div class="wtitle">union by rank, um caso de cada vez</div>
+  <div class="controls" id="cBtns"></div>
+  <div id="casePlayer"></div>
+  <p class="caption">O número ao lado de cada nó (r0, r1, r2) é o rank, e embaixo há a linha <code>rank</code> do vetor. Azul: ranks comparados. Verde: o ponteiro alterado, ou o rank que aumentou.</p>
+</div>
+
+<h2 id="slide">5. A simulação do slide: 8 elementos, 7 unions</h2>
+<p>Começa com 8 elementos separados (<code>pai[i] = i</code>, <code>rank[i] = 0</code>) e executa <code>union(0,1)</code>, <code>union(2,3)</code>, <code>union(1,3)</code>, <code>union(4,5)</code>, <code>union(5,0)</code>, <code>union(6,7)</code>, <code>union(7,2)</code>. Repare em quando o rank aumenta (só nos empates) e em quando não aumenta.</p>
+<div class="widget">
+  <div class="wtitle">Sequência completa, linha por linha</div>
+  <div id="seqPlayer"></div>
+  <p class="caption">O prefixo [k/7] indica qual union está rodando. Use "fim ⏭" para ver o resultado: uma única árvore de altura 2 com 8 elementos.</p>
+</div>
+<div class="table-wrap"><table>
+<tr><th>union</th><th>rx (rank)</th><th>ry (rank)</th><th>caso</th><th>efeito</th></tr>
+<tr><td>(0,1)</td><td>0 (0)</td><td>1 (0)</td><td>empate</td><td>pai[0] = 1, rank[1] = 1</td></tr>
+<tr><td>(2,3)</td><td>2 (0)</td><td>3 (0)</td><td>empate</td><td>pai[2] = 3, rank[3] = 1</td></tr>
+<tr><td>(1,3)</td><td>1 (1)</td><td>3 (1)</td><td>empate</td><td>pai[1] = 3, rank[3] = 2</td></tr>
+<tr><td>(4,5)</td><td>4 (0)</td><td>5 (0)</td><td>empate</td><td>pai[4] = 5, rank[5] = 1</td></tr>
+<tr><td>(5,0)</td><td>5 (1)</td><td>3 (2)</td><td>menor</td><td>pai[5] = 3, nenhum rank muda</td></tr>
+<tr><td>(6,7)</td><td>6 (0)</td><td>7 (0)</td><td>empate</td><td>pai[6] = 7, rank[7] = 1</td></tr>
+<tr><td>(7,2)</td><td>7 (1)</td><td>3 (2)</td><td>menor</td><td>pai[7] = 3, nenhum rank muda</td></tr>
+</table></div>
+<p>Em <code>union(5, 0)</code>, findSet(0) não devolve 0, devolve <b>3</b>: o 0 já estava na árvore do 3 (0 → 1 → 3). O union by rank compara os ranks das <b>raízes</b>, nunca os dos elementos passados como argumento.</p>
+
+<h2 id="log">6. Por que a altura nunca passa de log₂ n</h2>
+<p>Pelo slide: vamos tentar construir a árvore <b>mais alta possível</b>. Com union by rank, a altura de uma árvore só cresce num empate. Então, para chegar à altura $h$, é preciso unir <b>duas</b> árvores de altura $h-1$:</p>
+<div class="widget">
+  <div class="wtitle">Construindo a árvore mais alta com 8 elementos</div>
+  <div id="tallPlayer"></div>
+  <p class="caption">Sequência: union(0,1), union(2,3), union(4,5), union(6,7) (quatro árvores de altura 1), depois union(1,3), union(5,7) (duas de altura 2) e union(3,7) (uma de altura 3). Mesmo forçando, 8 nós dão no máximo altura 3 = log₂ 8.</p>
+</div>
+<div id="figHeights" class="figrow" style="grid-template-columns:repeat(4,auto);justify-content:center"></div>
+<div class="table-wrap"><table>
+<tr><th>Altura $h$</th><td class="num">0</td><td class="num">1</td><td class="num">2</td><td class="num">3</td><td class="num">⋯</td><td class="num">$h$</td></tr>
+<tr><th>Nós (no mínimo)</th><td class="num">1</td><td class="num">2</td><td class="num">4</td><td class="num">8</td><td class="num">⋯</td><td class="num">$2^h$</td></tr>
+</table></div>
+<div class="box def">
+  <span class="tag">Argumento completo (resposta de prova)</span>
+  <p><b>Afirmação:</b> uma árvore de altura $h$ construída com union by rank tem pelo menos $2^h$ nós.</p>
+  <ul>
+    <li><b>Base:</b> $h = 0$ é um nó só, e $1 = 2^0$.</li>
+    <li><b>Passo:</b> a altura só aumenta, de $h-1$ para $h$, quando se unem duas árvores de altura $h-1$ (empate). Cada uma tem pelo menos $2^{h-1}$ nós, então a nova tem pelo menos $2 \cdot 2^{h-1} = 2^h$. Unir com uma árvore mais baixa não muda a altura e só acrescenta nós.</li>
+  </ul>
+  <p><b>Conclusão:</b> com $n$ nós no total, $2^h \le n$, logo <b>$h \le \log_2 n$</b>. Os nós são consumidos de forma exponencial ($2^h$) enquanto a altura cresce de forma logarítmica.</p>
+</div>
+
+<h2 id="custo">7. Novas complexidades</h2>
+<p>findSet custa a profundidade, que agora é no máximo $\log_2 n$. union são dois findSet mais $O(1)$:</p>
+<div class="table-wrap"><table>
+<tr><th>Função (pior caso)</th><th class="num">Listas ligadas</th><th class="num">Floresta</th><th class="num">Floresta + union by rank</th></tr>
+<tr><td>makeSet</td><td class="num">$O(1)$</td><td class="num">$O(1)$</td><td class="num">$O(1)$</td></tr>
+<tr><td>findSet</td><td class="num">$O(1)$</td><td class="num">$O(n)$</td><td class="num">$O(\log n)$</td></tr>
+<tr><td>union</td><td class="num">$O(n)$</td><td class="num">$O(n)$</td><td class="num">$O(\log n)$</td></tr>
+</table></div>
+<p>O slide destaca: mesmo com union by rank, a árvore <b>pode</b> chegar à altura $\log_2 n$ (a construção da seção 6), então $O(\log n)$ é justo. Fazer melhor exige a segunda heurística, <b>path compression</b> (Lição 11.4).</p>
+
+<h2 id="lab">8. Laboratório: com e sem rank</h2>
+<div class="widget">
+  <div class="wtitle">Mesma sequência de unions, dois algoritmos</div>
+  <div class="controls" id="lBtns"></div>
+  <div class="controls">
+    <label>n <input id="lN" value="8" size="3"></label>
+    <label>unions <input id="lOps" value="0-1 1-2 2-3 3-4 4-5 5-6 6-7" size="40"></label>
+    <button class="btn" type="button" id="lGo">rodar</button>
+    <span id="lErr" class="caption"></span>
+  </div>
+  <div class="figrow">
+    <div><div class="sect-title" id="lT1"></div><div id="lA"></div></div>
+    <div><div class="sect-title" id="lT2"></div><div id="lB"></div></div>
+  </div>
+  <div class="box tip" id="lMsg"></div>
+  <p class="caption">Formato: pares x-y separados por espaço, executados em ordem. Tente montar uma sequência que deixe a árvore da direita mais alta que log₂ n. Pelo argumento da seção 6, não dá.</p>
+</div>
+
+<h2 id="quiz">9. Quiz de recordação</h2>
+<div id="quiz"></div>
+
+<h2 id="exercicio">10. Exercício (estilo prova)</h2>
+<div class="exercise">
+  <span class="tag">Exercício 11.3</span>
+  <p>Floresta com 8 elementos (0 a 7), inicialmente com <code>pai[i] = i</code> e <code>rank[i] = 0</code>. Execute com <b>union by rank</b> (no empate, a raiz de x desce):</p>
+  <p style="text-align:center"><code>union(0,1), union(2,3), union(0,2), union(4,5), union(6,4), union(7,0)</code></p>
+  <ol type="a">
+    <li>Mostre os vetores <code>pai</code> e <code>rank</code> depois de cada union, dizendo qual caso (menor, maior, empate) ocorreu.</li>
+    <li>Desenhe a floresta final e dê a altura de cada árvore.</li>
+    <li>Execute a mesma sequência <b>sem</b> union by rank (<code>pai[findSet(x)] = findSet(y)</code>). Qual a altura final?</li>
+    <li>Explique por que, com union by rank, nenhuma sequência de unions sobre esses 8 elementos produz altura 4.</li>
+  </ol>
+  <p class="caption">Responda no chat. Depois confira (a)–(c) no laboratório.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte principal</span>
+  <p>Slide da Aula 11, de "Qual é o principal problema…" até a tabela "Altura h / Nós (no mínimo)" (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Para aprofundar: Cormen, 3ª ed., seção 21.3 (heurística "union by rank") e o Lema 21.4. Em pt-BR: <a href="https://users.ime.usp.br/~pf/analise_de_algoritmos/aulas/union-find.html">Feofiloff, "A estrutura union-find"</a>, seções sobre união ponderada por altura. Dúvidas: pergunte no chat.</p>
+</div>
+
+<div class="pager">
+  <a href="0002-floresta-conjuntos-disjuntos.html"><small>← anterior</small>11.2 Floresta de conjuntos disjuntos</a>
+  <a class="next" href="0004-path-compression.html"><small>próxima →</small>11.4 Path compression e α(n)</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const fig = (id, st, opts = {}) => { const v = Forest.view(opts); document.getElementById(id).append(v.el); v.set(st, false); return v; };
+  const rootMarks = (pai) => Object.fromEntries(Forest.roots(pai).map((r) => [r, 'root']));
+
+  Quiz.mount(document.getElementById('warm'), [
+    { q: 'Com listas ligadas, por que <code>union</code> custa $O(n)$ no pior caso?',
+      options: ['corrige o rep de cada nó anexado', 'percorre a lista de x até o tail', 'precisa ordenar as duas listas', 'chama findSet para cada nó'], answer: 0,
+      explain: 'Ligar as listas é O(1) (tail.next e tail). O laço que corrige z.rep roda uma vez por nó da lista anexada.' },
+    { q: 'Com <code>pai = [0, 0, 1, 1, 3]</code>, quanto vale findSet(4)?',
+      options: ['$0$', '$1$', '$3$', '$4$'], answer: 0,
+      explain: '4 → 3 → 1 → 0, e pai[0] = 0. São 4 chamadas.' },
+    { q: 'O union da Lição 11.2 (versão do slide) é…',
+      options: ['$pai[findSet(x)] = findSet(y)$', '$pai[x] = findSet(y)$', '$pai[findSet(x)] = y$', '$pai[x] = y$'], answer: 0,
+      explain: 'Raiz com raiz. As outras versões deixam nós de fora (pai[x] = …) ou deixam a árvore alta demais.' },
+    { q: 'No Kruskal, quantas chamadas de findSet são feitas no total?',
+      options: ['$2A$', '$A$', '$V - 1$', '$2V$'], answer: 0,
+      explain: 'Duas por aresta examinada (u e v), e o laço examina as A arestas.' },
+  ]);
+
+  // seção 2
+  const B = [2, 0, 2, 2, 5, 5, 5];
+  fig('figBefore', { pai: B, marks: rootMarks(B) });
+  const G = B.slice(); G[5] = 2; fig('figGood', { pai: G, marks: { 2: 'root', 5: 'ok' }, edges: { 5: 'new' } });
+  const W = B.slice(); W[2] = 5; fig('figBad', { pai: W, marks: { 5: 'root', 1: 'bad' }, edges: { 2: 'new' }, tags: { 1: 'prof. 3' } });
+
+  // seção 4: casos
+  const cv = Forest.view(), cp = APA.el('div');
+  document.getElementById('casePlayer').append(cp);
+  function loadCase(n, prefix, x, y) {
+    const st = Forest.applyUnions(n, prefix, true);
+    cp.replaceChildren(); cp.className = '';
+    StepPlayer.mount(cp, { code: Forest.UNION_RANK_CODE, stack: true, speed: 1500, steps: Forest.traceUnionRank(st.pai, st.rank, x, y),
+      extra: (s, box) => { cv.set(s.fs); box.append(cv.el); } });
+  }
+  const cases = [['caso rank menor: union(3, 0)', 5, [[0, 1], [2, 1]], 3, 0], ['caso rank maior: union(0, 3)', 5, [[0, 1], [2, 1]], 0, 3], ['caso empate: union(0, 2)', 4, [[0, 1], [2, 3]], 0, 2]];
+  const cb = document.getElementById('cBtns');
+  cases.forEach(([lab, n, pre, x, y], k) => cb.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+    [...cb.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); loadCase(n, pre, x, y); } }, lab)));
+  loadCase(5, [[0, 1], [2, 1]], 3, 0);
+
+  // seção 5: sequência do slide
+  const sv = Forest.view();
+  StepPlayer.mount(document.getElementById('seqPlayer'), { code: Forest.UNION_RANK_CODE, stack: true, speed: 1100,
+    steps: Forest.traceRankSequence(8, [[0, 1], [2, 3], [1, 3], [4, 5], [5, 0], [6, 7], [7, 2]]), extra: (s, box) => { sv.set(s.fs); box.append(sv.el); } });
+
+  // seção 6: árvore mais alta
+  const tv = Forest.view();
+  StepPlayer.mount(document.getElementById('tallPlayer'), { code: Forest.UNION_RANK_CODE, stack: true, speed: 1000,
+    steps: Forest.traceRankSequence(8, [[0, 1], [2, 3], [4, 5], [6, 7], [1, 3], [5, 7], [3, 7]]), extra: (s, box) => { tv.set(s.fs); box.append(tv.el); } });
+  const fh = document.getElementById('figHeights');
+  [[1, []], [2, [[0, 1]]], [4, [[0, 1], [2, 3], [1, 3]]], [8, [[0, 1], [2, 3], [4, 5], [6, 7], [1, 3], [5, 7], [3, 7]]]].forEach(([n, ops], h) => {
+    const st = Forest.applyUnions(n, ops, true), box = APA.el('div');
+    fh.append(box); const v = Forest.view({ showArray: false }); box.append(v.el, APA.el('p', { class: 'caption', style: 'text-align:center' }, `altura ${h}: ${n} nó(s)`));
+    v.set({ ...st, marks: rootMarks(st.pai) }, false);
+  });
+
+  // seção 8: laboratório
+  const lA = Forest.view({ showArray: false }), lB = Forest.view({ showArray: false });
+  document.getElementById('lA').append(lA.el); document.getElementById('lB').append(lB.el);
+  function lab() {
+    const err = document.getElementById('lErr'); err.textContent = '';
+    const n = parseInt(document.getElementById('lN').value, 10);
+    const ops = [...document.getElementById('lOps').value.matchAll(/(\d+)\s*-\s*(\d+)/g)].map((m) => [+m[1], +m[2]]);
+    if (!(n >= 1 && n <= 16)) { err.textContent = 'n entre 1 e 16'; return; }
+    if (ops.some(([x, y]) => x >= n || y >= n)) { err.textContent = `elementos de 0 a ${n - 1}`; return; }
+    const a = Forest.applyUnions(n, ops, false), b = Forest.applyUnions(n, ops, true);
+    lA.set({ pai: a.pai, marks: rootMarks(a.pai) }); lB.set({ ...b, marks: rootMarks(b.pai) });
+    document.getElementById('lT1').textContent = `sem rank (pai[rx] = ry): altura ${Forest.height(a.pai)}`;
+    document.getElementById('lT2').textContent = `union by rank: altura ${Forest.height(b.pai)} (limite log₂ ${n} = ${Math.log2(n).toFixed(2)})`;
+    // conta, sem rank, quantas vezes a árvore MAIS ALTA foi pendurada na mais baixa
+    const P = [...Array(n).keys()]; let bad = 0; const badOps = [];
+    for (const [x, y] of ops) { const rx = Forest.root(P, x), ry = Forest.root(P, y); if (rx === ry) continue;
+      const hx = Math.max(...P.map((_, i) => (Forest.root(P, i) === rx ? Forest.depth(P, i) : 0))), hy = Math.max(...P.map((_, i) => (Forest.root(P, i) === ry ? Forest.depth(P, i) : 0)));
+      if (hx > hy) { bad++; badOps.push(`union(${x},${y})`); } P[rx] = ry; }
+    const ha = Forest.height(a.pai), hb = Forest.height(b.pai), msg = document.getElementById('lMsg');
+    msg.innerHTML = bad === 0
+      ? `<span class="tag">Mesmo resultado, por sorte</span><p>Nesta sequência, a regra sem rank (a raiz de x sempre desce) <b>nunca</b> pendurou a árvore mais alta embaixo da mais baixa: em todo union, a árvore de x já era a mais baixa (ou empatada). Foi coincidência da ordem dos argumentos. O union by rank <b>garante</b> isso para qualquer ordem. Clique em "sequência em cadeia" para ver a diferença.</p>`
+      : `<span class="tag">Diferença: ${ha} × ${hb}</span><p>Sem rank, ${bad} union(s) penduraram a árvore <b>mais alta</b> embaixo da mais baixa (${badOps.slice(0, 4).join(', ')}${badOps.length > 4 ? ', …' : ''}), e cada vez a altura subiu. O union by rank compara os ranks e faz o contrário: a mais baixa desce, e a altura só sobe nos empates.</p>`;
+  }
+  const lb = document.getElementById('lBtns');
+  [['sequência em cadeia', 8, '0-1 1-2 2-3 3-4 4-5 5-6 6-7'], ['sequência do slide', 8, '0-1 2-3 1-3 4-5 5-0 6-7 7-2'], ['árvore mais alta (rank)', 8, '0-1 2-3 4-5 6-7 1-3 5-7 3-7'], ['16 elementos em cadeia', 16, '0-1 1-2 2-3 3-4 4-5 5-6 6-7 7-8 8-9 9-10 10-11 11-12 12-13 13-14 14-15']].forEach(([lab_, n, ops], k) =>
+    lb.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+      [...lb.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on');
+      document.getElementById('lN').value = n; document.getElementById('lOps').value = ops; lab(); } }, lab_)));
+  document.getElementById('lGo').onclick = lab;
+  lab();
+
+  Quiz.mount(document.getElementById('quiz'), [
+    { q: 'Para uma raiz, o rank (sem path compression) é…',
+      options: ['a altura da sua árvore', 'o número de nós da árvore', 'o número de filhos da raiz', 'o índice da raiz no vetor'], answer: 0,
+      explain: 'A profundidade do nó mais fundo da árvore. (Contar nós seria a "união ponderada" por tamanho, outra variante.)' },
+    { q: 'rank[rx] = 1 e rank[ry] = 3. O que <code>union</code> faz?',
+      options: ['pai[rx] = ry, sem mudar ranks', 'pai[ry] = rx, sem mudar ranks', 'pai[rx] = ry e rank[ry] = 4', 'pai[ry] = rx e rank[rx] = 2'], answer: 0,
+      explain: 'A mais baixa (rx) vai para baixo. A altura da árvore de ry continua 3.' },
+    { q: 'Quando o rank de uma raiz aumenta?',
+      options: ['só quando os ranks empatam', 'em toda chamada de union', 'quando rank[rx] &lt; rank[ry]', 'quando um findSet sobe nela'], answer: 0,
+      explain: 'Só no empate a altura sobe, e sobe exatamente 1.' },
+    { q: 'Uma árvore de altura 4 construída com union by rank tem no mínimo…',
+      options: ['$16$ nós', '$5$ nós', '$8$ nós', '$4$ nós'], answer: 0,
+      explain: 'Altura h exige pelo menos 2^h nós: 2^4 = 16.' },
+    { q: 'Com union by rank e $n$ elementos, o pior caso do findSet é…',
+      options: ['$O(\\log n)$', '$O(1)$', '$O(n)$', '$O(n \\log n)$'], answer: 0,
+      explain: 'Custo = profundidade ≤ altura ≤ log₂ n.' },
+    { q: 'Em <code>union(5, 0)</code> da simulação do slide, por que comparar rank[5] com rank[<b>3</b>]?',
+      options: ['findSet(0) devolve a raiz 3', 'o slide usa o maior índice', 'o 0 tem rank igual a 3', 'o 3 é o maior conjunto'], answer: 0,
+      explain: 'O 0 já estava na árvore de raiz 3 (0 → 1 → 3). Os ranks comparados são sempre os das raízes.' },
+  ]);
+});
+</script>
+</body>
+</html>

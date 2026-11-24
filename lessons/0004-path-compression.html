@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11.4 · Path compression</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/forest.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Árvore Geradora Mínima</span>
+  <span class="spacer"></span>
+  <a href="../reference/aula11.html">Folha de referência</a>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Lição 4</p>
+<h1>Path compression</h1>
+<p class="lead">Path compression é um truque no <b>findSet</b>. Depois de achar a raiz, ele faz cada nó do caminho apontar <b>direto</b> para ela. Assim a árvore fica mais baixa e os próximos findSet ficam mais rápidos.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#aquec">Aquecimento</a></li>
+    <li><a href="#ex">Exemplo resolvido: findSet(2)</a></li>
+    <li><a href="#codigo">O código</a></li>
+    <li><a href="#anim">Animação</a></li>
+    <li><a href="#ganho">Quanto se ganha</a></li>
+    <li><a href="#rank">O rank não muda</a></li>
+    <li><a href="#alfa">Complexidade e α(n)</a></li>
+    <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="aquec">1. Aquecimento</h2>
+<p>Quatro perguntas das lições anteriores. Responda de memória.</p>
+<div id="warm"></div>
+
+<h2 id="ex">2. Exemplo resolvido: findSet(2)</h2>
+<p>Esta é a floresta. Queremos <code>findSet(2)</code>.</p>
+<div id="figBefore"></div>
+<p>O caminho de 2 até a raiz é <b>2 → 0 → 5 → 1</b>. Vamos seguir a recursão.</p>
+<p><b>Ida</b> (subindo até a raiz):</p>
+<div class="table-wrap"><table>
+<tr><th>Passo</th><th>Chamada</th><th>O que acontece</th></tr>
+<tr><td>1</td><td><code>findSet(2)</code></td><td>pai[2] = 0. Não é raiz. Chama findSet(0).</td></tr>
+<tr><td>2</td><td><code>findSet(0)</code></td><td>pai[0] = 5. Não é raiz. Chama findSet(5).</td></tr>
+<tr><td>3</td><td><code>findSet(5)</code></td><td>pai[5] = 1. Não é raiz. Chama findSet(1).</td></tr>
+<tr><td>4</td><td><code>findSet(1)</code></td><td>pai[1] = 1. <b>É a raiz.</b> Devolve 1.</td></tr>
+</table></div>
+<p><b>Volta</b> (cada chamada recebe 1 e grava em pai):</p>
+<div class="table-wrap"><table>
+<tr><th>Passo</th><th>Chamada</th><th>O que acontece</th></tr>
+<tr><td>5</td><td><code>findSet(5)</code></td><td>Recebe 1. Faz pai[5] = 1. Já era 1.</td></tr>
+<tr><td>6</td><td><code>findSet(0)</code></td><td>Recebe 1. Faz <b>pai[0] = 1</b>. Antes era 5.</td></tr>
+<tr><td>7</td><td><code>findSet(2)</code></td><td>Recebe 1. Faz <b>pai[2] = 1</b>. Antes era 0.</td></tr>
+</table></div>
+<p>Resultado:</p>
+<div id="figAfter"></div>
+<ul>
+  <li>2 e 0 agora apontam direto para a raiz.</li>
+  <li>O 4 não estava no caminho. Ele continua filho do 0, mas subiu junto com o 0.</li>
+</ul>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Todo nó do caminho passa a apontar para a raiz. Nós fora do caminho não mudam.</p>
+</div>
+
+<h2 id="codigo">3. O código</h2>
+<pre class="code"><span class="fn">findSet</span>(x)
+1.  <span class="kw">if</span> pai[x] ≠ x <span class="kw">then</span>
+2.      pai[x] = findSet(pai[x])
+3.  <span class="kw">return</span> pai[x]</pre>
+<ul>
+  <li><b>Linha 1:</b> x não é a raiz?</li>
+  <li><b>Linha 2:</b> acha a raiz (chamada recursiva) e grava em pai[x]. A gravação acontece na <b>volta</b>.</li>
+  <li><b>Linha 3:</b> devolve pai[x], que agora é a raiz.</li>
+</ul>
+<p>Compare com o findSet da Lição 11.2. A única diferença é que a linha 2 <b>guarda</b> a resposta em pai[x].</p>
+
+<h2 id="anim">4. Animação</h2>
+<div class="widget">
+  <div class="wtitle">findSet(x) com path compression</div>
+  <div class="controls" id="fBtns"></div>
+  <div id="findPlayer"></div>
+  <p class="caption">Na volta, cada nó do caminho desliza para baixo da raiz. A célula que mudou no vetor fica verde.</p>
+</div>
+
+<h2 id="ganho">5. Quanto se ganha</h2>
+<p>No exemplo, chame <code>findSet(2)</code> duas vezes seguidas:</p>
+<div class="table-wrap"><table>
+<tr><th></th><th class="num">1ª chamada</th><th class="num">2ª chamada</th></tr>
+<tr><td>sem compressão</td><td class="num">4 chamadas</td><td class="num">4 chamadas</td></tr>
+<tr><td>com compressão</td><td class="num">4 chamadas</td><td class="num"><b>2 chamadas</b></td></tr>
+</table></div>
+<p>A primeira busca paga o caminho inteiro. As seguintes ficam baratas. Teste no botão "de novo: findSet(2) depois" da animação.</p>
+<p>Numa sequência de unions (como no Kruskal), isso acontece o tempo todo:</p>
+<div class="widget">
+  <div class="wtitle">Mesma sequência: só rank × rank + compressão</div>
+  <div id="dualPlayer"></div>
+  <p class="caption">"custo" = nós visitados pelos findSet. Setas verdes = ponteiros alterados. Mesmo um union rejeitado comprime o caminho, porque ele chama findSet.</p>
+</div>
+
+<h2 id="rank">6. O rank não muda</h2>
+<p>A compressão mexe só em <code>pai</code>. O vetor <code>rank</code> fica igual.</p>
+<div class="figrow">
+  <div>
+    <div id="figRankA"></div>
+    <p class="caption">Antes: altura 3, rank[7] = 3.</p>
+  </div>
+  <div>
+    <div id="figRankB"></div>
+    <p class="caption">Depois de findSet(0): altura 2, rank[7] continua 3.</p>
+  </div>
+</div>
+<p>Por isso, com compressão, o rank não é mais a altura exata. Ele passa a ser um <b>limite superior</b>: a altura é no máximo o rank. O union by rank continua funcionando igual.</p>
+
+<h2 id="alfa">7. Complexidade e α(n)</h2>
+<p>Com union by rank e path compression juntos:</p>
+<ul>
+  <li><b>Uma chamada, no pior caso:</b> $O(\log n)$. A primeira busca num caminho longo ainda paga o caminho inteiro.</li>
+  <li><b>$m$ operações seguidas:</b> $O(m \, \alpha(n))$ no total.</li>
+  <li>Ou seja, <b>em média $O(\alpha(n))$ por operação</b>.</li>
+</ul>
+<p><b>O que é α(n)?</b> É uma função que cresce muito devagar (a inversa da função de Ackermann). Veja:</p>
+<div class="table-wrap"><table>
+<tr><th>$n$</th><td class="num">2</td><td class="num">3</td><td class="num">7</td><td class="num">2047</td><td class="num">$10^6$</td><td class="num">$10^{80}$</td></tr>
+<tr><th>$\alpha(n)$</th><td class="num">0</td><td class="num">1</td><td class="num">2</td><td class="num">3</td><td class="num">4</td><td class="num">4</td></tr>
+<tr><th>$\log_2 n$</th><td class="num">1</td><td class="num">1,6</td><td class="num">2,8</td><td class="num">11</td><td class="num">20</td><td class="num">266</td></tr>
+</table></div>
+<p>$10^{80}$ é mais ou menos o número de átomos do universo. Mesmo assim, α vale 4. Na prática, α(n) ≤ 4, então o custo por operação é praticamente constante.</p>
+<div class="table-wrap"><table>
+<tr><th>Função</th><th class="num">Listas</th><th class="num">Floresta</th><th class="num">+ rank</th><th class="num">+ rank + compressão</th></tr>
+<tr><td>findSet</td><td class="num">$O(1)$</td><td class="num">$O(n)$</td><td class="num">$O(\log n)$</td><td class="num">$O(\alpha(n))$ em média</td></tr>
+<tr><td>union</td><td class="num">$O(n)$</td><td class="num">$O(n)$</td><td class="num">$O(\log n)$</td><td class="num">$O(\alpha(n))$ em média</td></tr>
+</table></div>
+<div class="box prof">
+  <span class="tag">Na prova, escreva</span>
+  <ol>
+    <li>Path compression: no findSet, cada nó do caminho passa a apontar direto para a raiz.</li>
+    <li>Não altera o rank; o rank vira um limite superior da altura.</li>
+    <li>Com union by rank: $m$ operações custam $O(m\,\alpha(n))$, e $\alpha(n) \le 4$ na prática.</li>
+  </ol>
+</div>
+
+<h2 id="quiz">8. Quiz</h2>
+<div id="quiz"></div>
+
+<h2 id="exercicio">9. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 11.4</span>
+  <p><code>pai = [6, 0, 1, 2, 2, 6, 6, 5]</code> (índices 0 a 7). <code>rank[6] = 4</code>.</p>
+  <ol type="a">
+    <li>Desenhe a floresta.</li>
+    <li>Faça <code>findSet(3)</code> com path compression. Use duas tabelas como no exemplo (ida e volta). Mostre o vetor pai final.</li>
+    <li>Depois disso, quantas chamadas faz <code>findSet(3)</code>? E <code>findSet(4)</code>?</li>
+    <li>Quanto vale rank[6] depois? Ele é igual à altura?</li>
+  </ol>
+  <p class="caption">Responda no chat. Para conferir (b), use o botão "exercício" da animação.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide da Aula 11, parte "Path compression" (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Cormen, 3ª ed., seções 21.3 e 21.4. Ficou alguma dúvida? Pergunte no chat.</p>
+</div>
+
+<div class="pager">
+  <a href="0003-union-by-rank.html"><small>← anterior</small>11.3 Union by rank</a>
+  <a class="next" href="0005-complexidade-kruskal-prim.html"><small>próxima →</small>11.5 Complexidade do Kruskal e do Prim</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const fig = (id, st, opts = {}) => { const v = Forest.view(opts); document.getElementById(id).append(v.el); v.set(st, false); return v; };
+  const rootMarks = (pai) => Object.fromEntries(Forest.roots(pai).map((r) => [r, 'root']));
+
+  Quiz.mount(document.getElementById('warm'), [
+    { q: 'Union by rank com rank[rx] = 2 e rank[ry] = 2. O que acontece?',
+      options: ['pai[rx] = ry e rank[ry] = 3', 'pai[rx] = ry e rank[ry] = 2', 'pai[ry] = rx e rank[rx] = 2', 'pai[rx] = ry e rank[rx] = 3'], answer: 0,
+      explain: 'Empate: a raiz de x desce e o rank de quem ficou em cima sobe 1.' },
+    { q: 'Por que union by rank garante altura ≤ log₂ n?',
+      options: ['altura h exige 2^h nós', 'o rank nunca passa de 2', 'cada union divide a altura', 'findSet reorganiza a árvore'], answer: 0,
+      explain: 'Para subir a altura, é preciso juntar duas árvores iguais. O número mínimo de nós dobra.' },
+    { q: 'Floresta sem heurísticas: quando findSet(x) é O(1)?',
+      options: ['quando x é a raiz', 'quando x é uma folha', 'quando há dois nós', 'quando x tem filhos'], answer: 0,
+      explain: 'pai[x] = x: uma chamada só.' },
+    { q: 'Listas ligadas: a união ponderada anexa…',
+      options: ['a lista menor à maior', 'a lista maior à menor', 'sempre a lista de y', 'sempre a lista de x'], answer: 0,
+      explain: 'Assim menos ponteiros rep precisam ser corrigidos.' },
+  ]);
+
+  // seção 2
+  const S = [5, 1, 0, 3, 0, 1, 1, 3];
+  fig('figBefore', { pai: S, marks: { 2: 'cur', 0: 'path', 5: 'path', 1: 'root' }, edges: { 2: 'hot', 0: 'hot', 5: 'hot' }, tags: { 2: 'x' } });
+  const SA = [1, 1, 1, 3, 0, 1, 1, 3];
+  fig('figAfter', { pai: SA, marks: { 2: 'ok', 0: 'ok', 1: 'root' }, edges: { 2: 'new', 0: 'new' } });
+
+  // seção 4
+  const fv = Forest.view(), stackBox = APA.el('div');
+  const fp = StepPlayer.mount(document.getElementById('findPlayer'), { code: Forest.PC_CODE, stack: true, speed: 1300, steps: Forest.traceFindPC(S, 2),
+    extra: (st, box) => { fv.set(st.fs); stackBox.replaceChildren(Forest.stack(st.stack)); box.append(APA.el('div', { class: 'figrow' }, fv.el, stackBox)); } });
+  const LISTA = [0, 0, 1, 2, 3, 4, 5, 6];
+  const fb = document.getElementById('fBtns');
+  [['exemplo: findSet(2)', S, 2], ['de novo: findSet(2) depois', SA, 2], ['lista: findSet(7)', LISTA, 7], ['exercício', [6, 0, 1, 2, 2, 6, 6, 5], 3]].forEach(([lab, pai, x], k) =>
+    fb.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+      [...fb.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); fp.load(Forest.traceFindPC(pai, x)); } }, lab)));
+
+  // seção 5: lado a lado
+  const U = (x, y) => ['u', x, y];
+  const OPS = [U(0, 1), U(2, 3), U(4, 5), U(6, 7), U(1, 3), U(5, 7), U(3, 7), U(8, 9), U(0, 8), U(2, 9), U(4, 0), U(1, 6)];
+  const A = Forest.runOps(10, OPS, false), B = Forest.runOps(10, OPS, true);
+  const n0 = { pai: [...Array(10).keys()], rank: Array(10).fill(0) };
+  const steps = [{ line: null, note: 'makeSet nos 10 elementos.', vars: { 'custo total (só rank)': 0, 'custo total (+ compressão)': 0 }, L: n0, R: n0, PL: n0, PR: n0 }];
+  let ca = 0, cb = 0;
+  OPS.forEach((op, k) => {
+    ca += A[k].cost; cb += B[k].cost;
+    steps.push({ line: null, L: A[k], R: B[k], PL: k ? A[k - 1] : n0, PR: k ? B[k - 1] : n0,
+      note: `[${k + 1}/${OPS.length}] <b>union(${op[1]}, ${op[2]})</b>${A[k].ok ? '' : ' (rejeitado: mesmo conjunto)'}. Custo: ${A[k].cost} sem compressão, ${B[k].cost} com.`,
+      vars: { 'custo total (só rank)': ca, 'custo total (+ compressão)': cb } });
+  });
+  const dl = Forest.view(), dr = Forest.view();
+  const mk = (cur, prev) => ({ ...cur, marks: rootMarks(cur.pai), edges: Object.fromEntries(cur.pai.map((p, i) => [i, p !== prev.pai[i] ? 'new' : '']).filter(([, v]) => v)) });
+  StepPlayer.mount(document.getElementById('dualPlayer'), { code: ['cada passo = 1 union'], stack: true, speed: 1600, steps,
+    extra: (st, box) => { dl.set(mk(st.L, st.PL)); dr.set(mk(st.R, st.PR));
+      box.append(APA.el('div', { class: 'sect-title' }, 'só union by rank'), dl.el, APA.el('hr'),
+        APA.el('div', { class: 'sect-title' }, 'union by rank + path compression'), dr.el); } });
+
+  // seção 6
+  const T = Forest.applyUnions(8, [[0, 1], [2, 3], [4, 5], [6, 7], [1, 3], [5, 7], [3, 7]], true);
+  fig('figRankA', { ...T, marks: rootMarks(T.pai), rmarks: { 7: 'cmp' } });
+  const TB = Forest.traceFindPC(T.pai, 0, T.rank).slice(-1)[0].fs.pai;
+  fig('figRankB', { pai: TB, rank: T.rank, marks: rootMarks(TB), rmarks: { 7: 'cmp' }, edges: Object.fromEntries(TB.map((p, i) => [i, p !== T.pai[i] ? 'new' : '']).filter(([, v]) => v)) });
+
+  Quiz.mount(document.getElementById('quiz'), [
+    { q: 'O path compression altera…',
+      options: ['só o vetor pai', 'só o vetor rank', 'os vetores pai e rank', 'nenhum dos dois vetores'], answer: 0,
+      explain: 'Só pai. O rank fica igual.' },
+    { q: 'Em <code>pai[x] = findSet(pai[x])</code>, quando pai[x] muda?',
+      options: ['na volta da recursão', 'na ida da recursão', 'antes do teste da linha 1', 'só se x for a raiz'], answer: 0,
+      explain: 'Primeiro a chamada recursiva devolve a raiz. Depois ela é gravada.' },
+    { q: '<code>pai = [0, 0, 1, 2]</code>. Depois de findSet(3) com compressão:',
+      options: ['$[0, 0, 0, 0]$', '$[0, 0, 1, 0]$', '$[0, 0, 0, 2]$', '$[0, 1, 2, 3]$'], answer: 0,
+      explain: 'Caminho 3 → 2 → 1 → 0. Todos passam a apontar para 0.' },
+    { q: 'Um nó que não está no caminho do findSet…',
+      options: ['mantém o seu pai', 'passa a apontar à raiz', 'tem o rank zerado', 'é removido da árvore'], answer: 0,
+      explain: 'Só os nós do caminho mudam.' },
+    { q: 'Com rank + compressão, $m$ operações custam…',
+      options: ['$O(m\\,\\alpha(n))$', '$O(m \\log n)$', '$O(m\\,n)$', '$O(n \\log m)$'], answer: 0,
+      explain: 'E α(n) ≤ 4 na prática.' },
+    { q: 'Com rank + compressão, UMA chamada no pior caso custa…',
+      options: ['$O(\\log n)$', '$O(\\alpha(n))$', '$O(1)$', '$O(n)$'], answer: 0,
+      explain: 'A primeira busca num caminho longo ainda paga tudo. O α(n) é a média.' },
+  ]);
+});
+</script>
+</body>
+</html>

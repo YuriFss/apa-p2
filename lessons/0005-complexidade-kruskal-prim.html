@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11.5 · Complexidade do Kruskal e do Prim</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/graphrep.js"></script>
+<script defer src="../assets/heap.js"></script>
+<script defer src="../assets/forest.js"></script>
+<script defer src="../assets/primheap.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Árvore Geradora Mínima</span>
+  <span class="spacer"></span>
+  <a href="../reference/aula11.html">Folha de referência</a>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Lição 5</p>
+<h1>Complexidade do Kruskal e do Prim</h1>
+<p class="lead">Nesta lição contamos quanto custa cada linha dos dois algoritmos. Resultado: Kruskal custa $O(A \lg A)$ e Prim custa $O(A \log V)$. Para chegar lá, primeiro vemos como guardar o grafo.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#aquec">Aquecimento</a></li>
+    <li><a href="#repr">Matriz ou listas de adjacência</a></li>
+    <li><a href="#kruskal">Kruskal, linha por linha</a></li>
+    <li><a href="#heap">Lembrete: o heap nunca desbalanceia</a></li>
+    <li><a href="#prim">Prim com heap, contando operações</a></li>
+    <li><a href="#primcusto">Prim, linha por linha</a></li>
+    <li><a href="#resumo">Resumo</a></li>
+    <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="aquec">1. Aquecimento</h2>
+<div id="warm"></div>
+
+<h2 id="repr">2. Matriz ou listas de adjacência</h2>
+<p>Usamos o grafo do seu diagnóstico: <b>V = 5</b> vértices e <b>A = 7</b> arestas.</p>
+<div id="figGraph"></div>
+<p>Há duas formas de guardar esse grafo:</p>
+<ul>
+  <li><b>Matriz de adjacência:</b> uma tabela V × V. A célula [u][v] tem o peso da aresta u–v, ou fica vazia.</li>
+  <li><b>Listas de adjacência:</b> cada vértice tem uma lista com os seus vizinhos. Cada aresta aparece em <b>duas</b> listas.</li>
+</ul>
+<div id="figRep"></div>
+
+<h3>Exemplo: listar todas as arestas</h3>
+<p>O Kruskal precisa da lista de arestas para ordenar. Quanto custa montar essa lista?</p>
+<div class="widget">
+  <div class="wtitle">Percorrendo a representação</div>
+  <div class="controls" id="sBtns"></div>
+  <div id="scanPlayer"></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Representação</th><th class="num">Posições visitadas</th><th>Fórmula</th></tr>
+<tr><td>Matriz</td><td class="num">25</td><td>$V^2 = 5 \cdot 5$</td></tr>
+<tr><td>Listas</td><td class="num">19</td><td>$V + 2A = 5 + 14$</td></tr>
+</table></div>
+<p>A diferença cresce com o grafo. Com $V = 1000$ e $A = 3000$: a matriz visita 1.000.000 posições, as listas visitam 7.000.</p>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Matriz: $O(V^2)$, sempre. Listas: $O(V + A)$. Como $A \le V^2$, as listas <b>nunca</b> são piores. Por isso o slide usa listas de adjacência nos dois algoritmos.</p>
+</div>
+
+<h2 id="kruskal">3. Kruskal, linha por linha</h2>
+<pre class="code"><span class="fn">MST-KRUSKAL</span>(G, w)
+1.  S = ∅
+2.  <span class="kw">for</span> cada vértice v ∈ V <span class="kw">do</span>
+3.      makeSet(v)
+4.  ordenar as arestas de A por peso
+5.  <span class="kw">for</span> cada aresta (u, v) ∈ A, em ordem <span class="kw">do</span>
+6.      <span class="kw">if</span> findSet(u) ≠ findSet(v) <span class="kw">then</span>
+7.          S = S ∪ {(u, v)}
+8.          union(u, v)</pre>
+<p>Conjuntos disjuntos com union by rank e path compression (Lição 11.4):</p>
+<div class="table-wrap"><table>
+<tr><th>Linhas</th><th>O que faz</th><th>Quantas vezes (exemplo: V = 5, A = 7)</th><th>Custo</th></tr>
+<tr><td>1</td><td>cria S vazio</td><td>1</td><td>$O(1)$</td></tr>
+<tr><td>2–3</td><td>makeSet</td><td>V = 5</td><td>$O(V)$</td></tr>
+<tr><td>4</td><td>monta a lista de arestas (listas de adjacência)</td><td>V + 2A = 19 posições</td><td>$O(V + A)$</td></tr>
+<tr><td>4</td><td>ordena as A arestas (MergeSort, HeapSort…)</td><td>7 arestas</td><td>$O(A \lg A)$</td></tr>
+<tr><td>5–8</td><td>2 findSet por aresta, union quando aceita</td><td>14 findSet, 4 union</td><td>$O(A \, \alpha(V))$</td></tr>
+</table></div>
+<p>Somando:</p>
+<p class="result">$O(1) + O(V) + O(V + A) + O(A \lg A) + O(A\,\alpha(V))$</p>
+<p>Agora simplificamos, um passo de cada vez:</p>
+<ol class="steps">
+  <li><b>O grafo é conexo, então $A \ge V - 1$.</b> Logo $O(V)$ e $O(V + A)$ cabem em $O(A)$.</li>
+  <li><b>$\alpha(V)$ cresce mais devagar que $\lg A$.</b> Logo $O(A\,\alpha(V))$ cabe em $O(A \lg A)$.</li>
+  <li><b>Sobra o maior termo:</b> $O(A \lg A)$.</li>
+</ol>
+<p class="result">Kruskal: $O(A \lg A)$</p>
+<div class="box tip">
+  <span class="tag">Conclusão do slide</span>
+  <p>A estrutura de conjuntos disjuntos ficou tão rápida que o <b>gargalo é a ordenação</b> das arestas. Se os pesos forem inteiros, um Radix Sort pode ser ainda melhor na prática.</p>
+</div>
+<details class="box">
+  <summary>Duas otimizações práticas (não mudam o $O$)</summary>
+  <ul>
+    <li>A linha 6 já calculou findSet(u) e findSet(v). O union pode receber as duas raízes e só ligar uma na outra: $O(1)$.</li>
+    <li>Uma árvore geradora tem exatamente $V - 1$ arestas. Dá para parar o laço quando $|S| = V - 1$.</li>
+  </ul>
+</details>
+
+<h2 id="heap">4. Lembrete: o heap nunca desbalanceia</h2>
+<p>No diagnóstico você disse que o decreaseKey poderia custar $V$ "se a árvore estiver desbalanceada". Isso vale para a <b>floresta</b> de conjuntos disjuntos, não para o <b>heap</b>.</p>
+<div class="figrow">
+  <div>
+    <div id="figHeap"></div>
+    <p class="caption"><b>Heap binário com 7 elementos.</b> É preenchido nível por nível, da esquerda para a direita. A forma é sempre esta, qualquer que seja a ordem das inserções. Altura: $\lfloor \log_2 7 \rfloor = 2$.</p>
+  </div>
+  <div>
+    <div id="figList"></div>
+    <p class="caption"><b>Floresta sem heurísticas</b> com 7 elementos. A forma depende dos unions e pode virar uma lista. Altura: 6.</p>
+  </div>
+</div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>O heap tem altura $\lfloor \log_2 n \rfloor$ sempre. Toda operação que sobe ou desce no heap custa $O(\log n)$.</p>
+</div>
+<p>O Prim usa quatro operações do heap:</p>
+<div class="table-wrap"><table>
+<tr><th>Operação</th><th>O que faz</th><th>Custo</th></tr>
+<tr><td>buildMinHeap</td><td>monta o heap com os V vértices</td><td>$O(V)$</td></tr>
+<tr><td>EXTRACT_MIN</td><td>tira o topo, põe o último no lugar e desce (minHeapify)</td><td>$O(\log V)$</td></tr>
+<tr><td>decreaseKey</td><td>diminui a chave de v e sobe v, trocando com o pai enquanto o pai for maior</td><td>$O(\log V)$</td></tr>
+<tr><td>v ∈ Q?</td><td>consulta um vetor booleano "está em Q"</td><td>$O(1)$</td></tr>
+</table></div>
+
+<h2 id="prim">5. Prim com heap, contando operações</h2>
+<p>É o mesmo Prim que você rodou no diagnóstico (raiz A). Agora você vê o heap e os contadores.</p>
+<div class="widget">
+  <div class="wtitle">MST-PRIM com Q em heap mínimo</div>
+  <div id="primPlayer"></div>
+  <p class="caption">Grafo: verde = já saiu de Q; laranja = u atual; azul = vizinho em exame. Aresta azul cheia = já está na árvore. Aresta azul tracejada = melhor ligação conhecida de um vértice ainda em Q. Aresta laranja = em exame. Heap: cada nó mostra "vértice:chave". Laranja = nó que está subindo ou descendo.</p>
+</div>
+<p>Contagem no fim da animação:</p>
+<div class="table-wrap"><table>
+<tr><th>Operação</th><th class="num">Neste grafo</th><th>Em geral</th></tr>
+<tr><td>EXTRACT_MIN</td><td class="num">5</td><td>exatamente V (cada vértice sai uma vez)</td></tr>
+<tr><td>visitas em Adj (linha 8)</td><td class="num">14</td><td>soma dos graus = 2A</td></tr>
+<tr><td>decreaseKey</td><td class="num">7</td><td>no máximo A (uma por aresta)</td></tr>
+</table></div>
+
+<h2 id="primcusto">6. Prim, linha por linha</h2>
+<pre class="code"><span class="fn">MST-PRIM</span>(G, w, r)
+1.  <span class="kw">for</span> cada u ∈ V <span class="kw">do</span>
+2.      chave[u] = ∞
+3.      pai[u] = null
+4.  chave[r] = 0
+5.  Q = V
+6.  <span class="kw">while</span> Q ≠ ∅ <span class="kw">do</span>
+7.      u = EXTRACT_MIN(Q)
+8.      <span class="kw">for each</span> v em Adj[u] <span class="kw">do</span>
+9.          <span class="kw">if</span> v ∈ Q <span class="kw">and</span> w(u, v) &lt; chave[v] <span class="kw">then</span>
+10.             pai[v] = u
+11.             chave[v] = w(u, v)</pre>
+<p>Com listas de adjacência e Q em heap mínimo:</p>
+<div class="table-wrap"><table>
+<tr><th>Linhas</th><th>Quantas vezes</th><th>Custo de cada</th><th>Total</th></tr>
+<tr><td>1–4</td><td>V</td><td>$O(1)$</td><td>$O(V)$</td></tr>
+<tr><td>5 (buildMinHeap)</td><td>1</td><td>$O(V)$</td><td>$O(V)$</td></tr>
+<tr><td>7 (EXTRACT_MIN)</td><td>V</td><td>$O(\log V)$</td><td>$O(V \log V)$</td></tr>
+<tr><td>8–9 (visitar vizinho e testar)</td><td>2A</td><td>$O(1)$</td><td>$O(A)$</td></tr>
+<tr><td>10–11 (decreaseKey)</td><td>até A</td><td>$O(\log V)$</td><td>$O(A \log V)$</td></tr>
+</table></div>
+<p>Somando: $O(V \log V) + O(A \log V)$. Como o grafo é conexo, $A \ge V - 1$, e o primeiro termo cabe no segundo:</p>
+<p class="result">Prim com listas + heap binário: $O(A \log V)$</p>
+
+<h3>E com matriz de adjacência?</h3>
+<p>Só a linha 8 muda. Para achar os vizinhos de u, é preciso olhar a linha inteira de u na matriz: V células.</p>
+<div class="table-wrap"><table>
+<tr><th>Linha 8</th><th>Por vértice</th><th>Total (V vértices)</th></tr>
+<tr><td>listas</td><td>grau(u)</td><td>2A, ou seja $O(A)$</td></tr>
+<tr><td>matriz</td><td>V</td><td>$V \cdot V$, ou seja $O(V^2)$</td></tr>
+</table></div>
+<p>Com matriz, o Prim custa $O(V^2 + A \log V)$. Num grafo esparso (poucas arestas) isso é bem pior que $O(A \log V)$.</p>
+<p class="caption">O slide também cita o heap de Fibonacci, com o qual o Prim custa $O(A + V \log V)$. Basta saber que existe.</p>
+
+<h2 id="resumo">7. Resumo</h2>
+<div class="table-wrap"><table>
+<tr><th>Algoritmo</th><th>Implementação</th><th>Custo</th><th>O que domina</th></tr>
+<tr><td>Kruskal</td><td>listas + conjuntos disjuntos (rank + compressão)</td><td>$O(A \lg A)$</td><td>ordenar as arestas</td></tr>
+<tr><td>Prim</td><td>listas + heap binário</td><td>$O(A \log V)$</td><td>decreaseKey (até A vezes)</td></tr>
+<tr><td>Prim</td><td>matriz + heap binário</td><td>$O(V^2 + A \log V)$</td><td>percorrer as linhas da matriz</td></tr>
+</table></div>
+<p>Kruskal e Prim têm a mesma ordem. Como $A \le V^2$, temos $\lg A \le 2 \lg V$. Então $O(A \lg A) = O(A \log V)$.</p>
+<div class="box prof">
+  <span class="tag">Na prova, escreva</span>
+  <ol>
+    <li>Diga a representação (listas de adjacência) e a estrutura auxiliar (conjuntos disjuntos ou heap).</li>
+    <li>Monte a tabela: linha → quantas vezes → custo de cada → total.</li>
+    <li>Some e simplifique usando $A \ge V - 1$ (grafo conexo).</li>
+  </ol>
+</div>
+
+<h2 id="quiz">8. Quiz</h2>
+<div id="quiz"></div>
+
+<h2 id="exercicio">9. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 11.5</span>
+  <p>Grafo com V = 6 e A = 9: a–b 3, a–c 5, b–c 1, b–d 6, c–d 2, c–e 7, d–e 4, d–f 8, e–f 3.</p>
+  <ol type="a">
+    <li>No Kruskal, quantas vezes são chamados makeSet, findSet e union?</li>
+    <li>No Prim com raiz a, quantas vezes roda EXTRACT_MIN? Quantas visitas acontecem na linha 8? Rode o algoritmo e conte quantos decreaseKey acontecem.</li>
+    <li>Um grafo completo com V = 100 tem A = 4950 arestas. Compare $V^2$ com $A \log_2 V$ (use $\log_2 100 \approx 7$). Nesse caso, qual Prim é melhor, com matriz ou com listas + heap?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide da Aula 11, partes "Complexidade" (Kruskal) e "Algoritmo de Prim" até o fim (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Cormen, 3ª ed., seções 23.2 e 22.1 (representações de grafos). Ficou alguma dúvida? Pergunte no chat.</p>
+</div>
+
+<div class="pager">
+  <a href="0004-path-compression.html"><small>← anterior</small>11.4 Path compression</a>
+  <a class="next" href="../index.html"><small>próxima →</small>Aula 13 · Programação dinâmica (em breve)</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const G = { pos: { A: [60, 40], C: [220, 40], B: [60, 180], D: [220, 180], E: [360, 110] },
+    edges: [['A', 'B', 4], ['A', 'C', 1], ['B', 'C', 2], ['B', 'D', 5], ['C', 'D', 8], ['C', 'E', 6], ['D', 'E', 3]] };
+  const GR = { verts: ['A', 'B', 'C', 'D', 'E'], edges: G.edges };
+
+  Quiz.mount(document.getElementById('warm'), [
+    { q: 'Um heap binário com 15 elementos tem altura…',
+      options: ['$3$, sempre', '$14$ no pior caso', 'depende das inserções', '$15$ no pior caso'], answer: 0,
+      explain: 'O heap é preenchido nível por nível: altura ⌊log₂ 15⌋ = 3, sempre.' },
+    { q: 'No Kruskal, quantas vezes findSet é chamado?',
+      options: ['$2A$', '$A$', '$V - 1$', '$2V$'], answer: 0,
+      explain: 'Duas vezes por aresta examinada.' },
+    { q: 'Com rank + compressão, $m$ operações de conjuntos disjuntos custam…',
+      options: ['$O(m\\,\\alpha(n))$', '$O(m \\log n)$', '$O(m\\,n)$', '$O(n^2)$'], answer: 0,
+      explain: 'α(n) ≤ 4 na prática.' },
+    { q: 'No Prim, quando a chave de um vértice v é atualizada?',
+      options: ['v em Q e peso menor', 'sempre que v é vizinho', 'só quando v sai de Q', 'quando v é a raiz'], answer: 0,
+      explain: 'As duas condições da linha 9: v ∈ Q e w(u, v) < chave[v].' },
+  ]);
+
+  document.getElementById('figGraph').append(GraphView.render(G, {}));
+  document.getElementById('figRep').append(GraphRep.render(GR, { mode: 'both' }));
+
+  const sp = StepPlayer.mount(document.getElementById('scanPlayer'), { code: ['montar a lista de arestas'], stack: true, speed: 500,
+    steps: GraphRep.traceScan(GR, 'matrix'), extra: (st, box) => box.append(GraphRep.render(GR, st.gr)) });
+  const sb = document.getElementById('sBtns');
+  [['matriz', 'matrix'], ['listas', 'lists']].forEach(([lab, m], k) => sb.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+    [...sb.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); sp.load(GraphRep.traceScan(GR, m)); } }, lab)));
+
+  document.getElementById('figHeap').append(HeapView.render([1, 3, 2, 7, 4, 5, 6]));
+  const fv = Forest.view({ showArray: false }); document.getElementById('figList').append(fv.el);
+  fv.set({ pai: [0, 0, 1, 2, 3, 4, 5], marks: { 0: 'root' } }, false);
+
+  StepPlayer.mount(document.getElementById('primPlayer'), { code: PrimHeap.CODE, stack: true, speed: 1300,
+    steps: PrimHeap.trace(G, 'A'), extra: (st, box) => PrimHeap.draw(G, st, box) });
+
+  Quiz.mount(document.getElementById('quiz'), [
+    { q: 'Montar a lista de arestas a partir de uma matriz de adjacência custa…',
+      options: ['$O(V^2)$', '$O(V + A)$', '$O(A \\lg A)$', '$O(A)$'], answer: 0,
+      explain: 'É preciso olhar todas as V × V células.' },
+    { q: 'O que domina o custo do Kruskal (com rank + compressão)?',
+      options: ['ordenar as arestas', 'as chamadas de makeSet', 'as chamadas de findSet', 'montar a lista de arestas'], answer: 0,
+      explain: 'O(A lg A) da ordenação é maior que todo o resto.' },
+    { q: 'Por que $O(V)$ "some" dentro de $O(A \\lg A)$?',
+      options: ['grafo conexo: A ≥ V − 1', 'porque V é sempre pequeno', 'porque V ≤ log A', 'porque makeSet é grátis'], answer: 0,
+      explain: 'Num grafo conexo há pelo menos V − 1 arestas.' },
+    { q: 'No Prim com listas, quantas vezes a linha 8 visita um vizinho, no total?',
+      options: ['$2A$', '$V^2$', '$A$', '$V$'], answer: 0,
+      explain: 'Cada vértice percorre sua lista uma vez; a soma dos graus é 2A.' },
+    { q: 'Prim com listas + heap binário custa…',
+      options: ['$O(A \\log V)$', '$O(V^2)$', '$O(A + V \\log V)$', '$O(V \\log A)$'], answer: 0,
+      explain: 'O(V log V) dos extractMin + O(A log V) dos decreaseKey.' },
+    { q: 'Com matriz de adjacência, por que o Prim fica com um termo $V^2$?',
+      options: ['a linha 8 percorre V células por vértice', 'o heap fica desbalanceado', 'decreaseKey custa V', 'extractMin custa V'], answer: 0,
+      explain: 'Achar os vizinhos de u exige olhar a linha inteira de u: V vezes V.' },
+  ]);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11.2 · Floresta de conjuntos disjuntos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/listsets.js"></script>
+<script defer src="../assets/forest.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Árvore Geradora Mínima</span>
+  <span class="spacer"></span>
+  <a href="../reference/aula11.html">Folha de referência</a>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Lição 2</p>
+<h1>Floresta de conjuntos disjuntos</h1>
+<p class="lead">É a segunda implementação do slide. Cada conjunto vira uma <b>árvore</b> guardada num vetor <code>pai[]</code>. Em P2 antigas caiu "explique passo a passo o find(x) neste array pai" e "qual a complexidade do find? existe melhor e pior caso?".</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#repr">Representação: árvores e o vetor pai</a></li>
+    <li><a href="#ler">Do vetor para o desenho (e de volta)</a></li>
+    <li><a href="#make">makeSet</a></li>
+    <li><a href="#find">findSet passo a passo, com a pilha de chamadas</a></li>
+    <li><a href="#custo">Custo do findSet: melhor e pior caso</a></li>
+    <li><a href="#union">union: três ideias, só uma serve</a></li>
+    <li><a href="#comp">Listas × floresta, e o problema da altura</a></li>
+    <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="repr">1. Representação: árvores e o vetor pai</h2>
+<div class="box def">
+  <span class="tag">Definição (slide "Florestas de conjuntos disjuntos")</span>
+  <ul>
+    <li>Cada <b>conjunto</b> é uma <b>árvore</b>. O conjunto de todas as árvores é a <b>floresta</b>.</li>
+    <li>Cada <b>nó</b> representa um elemento e guarda um único ponteiro, para o seu <b>pai</b>. Não há ponteiro para os filhos.</li>
+    <li>A <b>raiz aponta para ela mesma</b>. É assim que se reconhece a raiz.</li>
+    <li>A raiz é o <b>representante</b> do conjunto: <code>findSet(x)</code> devolve a raiz da árvore de x.</li>
+    <li>Na forma mais simples, a floresta é um <b>array de inteiros</b> <code>pai</code>. O <b>índice</b> é o elemento e o <b>valor</b> é o pai desse elemento.</li>
+  </ul>
+</div>
+
+<div class="figrow">
+  <div>
+    <div id="figList"></div>
+    <p class="caption">Lição 11.1: os conjuntos {5, 0, 6, 1} e {3, 2, 7, 4} como listas ligadas. Todo nó aponta direto para o conjunto (rep).</p>
+  </div>
+  <div>
+    <div id="figForest"></div>
+    <p class="caption">Os mesmos dois conjuntos como floresta. Cada seta vai do filho para o <b>pai</b>, e o laço em cima da raiz é <code>pai[r] = r</code>. Raízes: 5 e 3.</p>
+  </div>
+</div>
+<p>A diferença principal: na lista, todo elemento chega ao representante em <b>1 passo</b> (rep). Na floresta, ele precisa <b>subir</b> pela árvore até a raiz, e o número de passos depende da profundidade. Em compensação, juntar duas árvores muda <b>um único</b> ponteiro (seção 6), enquanto na lista era preciso corrigir o rep de cada nó anexado.</p>
+
+<h2 id="ler">2. Do vetor para o desenho (e de volta)</h2>
+<p>Na prova o enunciado dá o array e você precisa enxergar as árvores. Use este procedimento:</p>
+<ol class="steps">
+  <li><b>Ache as raízes:</b> os índices com <code>pai[i] = i</code>. Cada raiz é uma árvore.</li>
+  <li><b>Para cada outro i, desenhe uma seta i → pai[i].</b> Quem tem <code>pai[i] = r</code> fica no nível 1 abaixo de r, quem aponta para esses fica no nível 2, e assim por diante.</li>
+  <li><b>Confira:</b> partindo de qualquer nó e seguindo as setas, você precisa chegar a uma raiz.</li>
+</ol>
+<div class="table-wrap"><table>
+<tr><th>i</th><th class="num">pai[i]</th><th>leitura</th></tr>
+<tr><td>0</td><td class="num">5</td><td>0 é filho de 5</td></tr>
+<tr><td>1</td><td class="num">0</td><td>1 é filho de 0 (neto de 5)</td></tr>
+<tr><td>2</td><td class="num">3</td><td>2 é filho de 3</td></tr>
+<tr><td>3</td><td class="num">3</td><td><b>raiz</b> (aponta para si)</td></tr>
+<tr><td>4</td><td class="num">2</td><td>4 é filho de 2 (neto de 3)</td></tr>
+<tr><td>5</td><td class="num">5</td><td><b>raiz</b></td></tr>
+<tr><td>6</td><td class="num">5</td><td>6 é filho de 5</td></tr>
+<tr><td>7</td><td class="num">3</td><td>7 é filho de 3</td></tr>
+</table></div>
+<div class="widget">
+  <div class="wtitle">Explorador: digite um vetor pai e clique num nó</div>
+  <div class="controls">
+    <label>pai = <input id="exIn" value="5, 0, 3, 3, 2, 5, 5, 3" size="30"></label>
+    <button class="btn" type="button" id="exGo">desenhar</button>
+    <span id="exErr" class="caption"></span>
+  </div>
+  <div id="ex"></div>
+  <p class="caption" id="exInfo">Clique num nó para ver o caminho até a raiz.</p>
+</div>
+
+<h2 id="make">3. makeSet</h2>
+<pre class="code"><span class="fn">makeSet</span>(x)
+1.  pai[x] = x</pre>
+<p>Cria uma árvore de um nó só, que é a própria raiz. É uma atribuição: <b>$O(1)$</b>. No começo do Kruskal, depois dos $V$ makeSet, a floresta fica assim (8 conjuntos, 8 raízes):</p>
+<div id="figMake"></div>
+
+<h2 id="find">4. findSet passo a passo, com a pilha de chamadas</h2>
+<pre class="code"><span class="fn">findSet</span>(x)
+1.  <span class="kw">if</span> pai[x] = x <span class="kw">then</span>
+2.      <span class="kw">return</span> x
+3.  <span class="kw">return</span> findSet(pai[x])</pre>
+<ul>
+  <li><b>Linha 1:</b> x aponta para si mesmo? Então x é a raiz.</li>
+  <li><b>Linha 2:</b> caso base. Devolve x, que é o representante.</li>
+  <li><b>Linha 3:</b> caso recursivo. "A raiz de x é a raiz do pai de x." Sobe um nível e pergunta de novo. A chamada atual fica <b>esperando</b> a resposta e depois só a repassa para cima.</li>
+</ul>
+<p>São duas fases. Na <b>ida</b>, as chamadas se empilham subindo da folha até a raiz. Na <b>volta</b>, a raiz encontrada é devolvida chamada por chamada, até a primeira.</p>
+<div class="widget">
+  <div class="wtitle">findSet(x), passo a passo</div>
+  <div class="controls" id="fBtns"></div>
+  <div id="findPlayer"></div>
+  <p class="caption">Azul: chamada atual. Laranja: nó já visitado e a seta seguida. Verde: raiz. No array, a célula lida em cada passo fica destacada. À direita, a pilha: cada nova chamada entra embaixo, e na volta cada uma mostra o que devolveu.</p>
+</div>
+<details class="box">
+  <summary>Versão iterativa, equivalente (útil para entender o custo)</summary>
+<pre class="code"><span class="fn">findSet</span>(x)
+<span class="kw">while</span> pai[x] ≠ x <span class="kw">do</span>
+    x = pai[x]
+<span class="kw">return</span> x</pre>
+  <p>Mesmo caminho, sem pilha. O laço roda uma vez por aresta do caminho até a raiz, ou seja, <b>profundidade(x)</b> vezes.</p>
+</details>
+
+<h2 id="custo">5. Custo do findSet: melhor e pior caso</h2>
+<p>Cada chamada faz trabalho constante (uma leitura, uma comparação e no máximo uma chamada). O número de chamadas é o número de nós no caminho de x até a raiz:</p>
+<p class="result">chamadas = profundidade(x) + 1, então custo = $\Theta(\text{profundidade}(x) + 1)$</p>
+<div class="figrow">
+  <div>
+    <div id="figBest"></div>
+    <p class="caption"><b>Melhor caso:</b> x já é a raiz (ou a árvore é "rasa"). findSet(3) faz 1 chamada: $O(1)$.</p>
+  </div>
+  <div>
+    <div id="figWorst"></div>
+    <p class="caption"><b>Pior caso:</b> todos os $n$ elementos numa árvore completamente desbalanceada, que é uma <b>lista</b>. findSet(7) sobe por todos: $n$ chamadas, $O(n)$.</p>
+  </div>
+</div>
+<div class="box prof">
+  <span class="tag">Resposta de prova: "complexidade do find em função de n? Existe melhor e pior caso?"</span>
+  <p>Sim. O custo depende da profundidade do nó, porque o find sobe um nível por chamada até a raiz. <b>Melhor caso $O(1)$</b>: x é a raiz (pai[x] = x), uma única comparação. <b>Pior caso $O(n)$</b>: os n elementos estão numa só árvore degenerada em lista (cada nó aponta para o anterior) e x é a folha do fim, então o find percorre os n nós. Sem heurísticas nada impede que esse formato apareça, porque o union pode criar árvores assim (seção 7).</p>
+</div>
+
+<h2 id="union">6. union: três ideias, só uma serve</h2>
+<p>O slide constrói o union em três tentativas. A animação usa o mesmo começo nas três: duas árvores de altura 2 e a chamada <code>union(1, 4)</code>.</p>
+<div class="widget">
+  <div class="wtitle">union(1, 4): compare as três ideias</div>
+  <div class="controls" id="uBtns"></div>
+  <div id="unionPlayer"></div>
+  <p class="caption">Laranja: caminho percorrido por um findSet. Verde: o único ponteiro que o union altera. Vermelho: elementos que ficaram no conjunto errado. Repare como os nós deslizam para a nova posição quando a seta muda.</p>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Ideia</th><th>Código</th><th>Resultado em union(1, 4)</th></tr>
+<tr><td>1. ligar x a y</td><td class="mono">pai[x] = y</td><td><b>Errado.</b> Só o 1 (e o que estiver abaixo dele) muda de árvore. 5, 0 e 6 ficam de fora. Funciona só se x for raiz.</td></tr>
+<tr><td>2. ligar a raiz de x a y</td><td class="mono">pai[findSet(x)] = y</td><td>Correto, todos ficam numa árvore. Mas a altura vai de 2 para <b>5</b>: a árvore de 1 foi pendurada embaixo do 4, que já era fundo.</td></tr>
+<tr><td>3. ligar raiz a raiz</td><td class="mono">pai[findSet(x)] = findSet(y)</td><td>Correto, e a altura fica <b>3</b>. É a versão do slide.</td></tr>
+</table></div>
+<pre class="code"><span class="fn">union</span>(x, y)
+1.  pai[findSet(x)] = findSet(y)</pre>
+<p><b>Custo:</b> a atribuição é $O(1)$. As duas chamadas de findSet dominam, e cada uma é $O(n)$ no pior caso (duas árvores-lista). Portanto <b>union = $O(n)$</b> no pior caso.</p>
+
+<h2 id="comp">7. Listas × floresta, e o problema da altura</h2>
+<div class="table-wrap"><table>
+<tr><th>Função (pior caso)</th><th class="num">Listas ligadas</th><th class="num">Floresta</th></tr>
+<tr><td>makeSet</td><td class="num">$O(1)$</td><td class="num">$O(1)$</td></tr>
+<tr><td>findSet</td><td class="num">$O(1)$</td><td class="num">$O(n)$</td></tr>
+<tr><td>union</td><td class="num">$O(n)$</td><td class="num">$O(n)$</td></tr>
+</table></div>
+<p>Pela tabela, a floresta parece pior. O que estraga tudo é a <b>altura</b>: o custo do findSet, e por consequência do union, é a profundidade. Mesmo usando a ideia 3, o union pode produzir árvores altas. Exemplo, começando com 8 conjuntos unitários: <code>union(0,1)</code>, <code>union(1,2)</code>, …, <code>union(6,7)</code>. Em cada chamada, findSet(x) devolve a raiz atual da árvore inteira, que é pendurada no próximo elemento sozinho. O resultado é uma lista:</p>
+<div class="figrow">
+  <div>
+    <div id="figTall"></div>
+    <p class="caption">Depois de union(6,7): 8 elementos, altura 7. findSet(0) faz 8 chamadas.</p>
+  </div>
+  <div>
+    <div id="figShort"></div>
+    <p class="caption">Os mesmos 8 elementos com altura 2. findSet em qualquer nó: no máximo 3 chamadas.</p>
+  </div>
+</div>
+<p>O slide resolve isso com duas heurísticas: <b>union by rank</b>, que pendura a árvore mais baixa na mais alta e garante altura $\le \log_2 n$ (Lição 11.3), e <b>path compression</b>, que achata o caminho durante o findSet (Lição 11.4).</p>
+
+<h2 id="quiz">8. Quiz de recordação</h2>
+<div id="quiz"></div>
+
+<h2 id="exercicio">9. Exercício (estilo prova)</h2>
+<div class="exercise">
+  <span class="tag">Exercício 11.2</span>
+  <p>Floresta com 9 elementos: <code>pai = [2, 0, 2, 8, 3, 2, 8, 4, 8]</code> (índices 0 a 8).</p>
+  <ol type="a">
+    <li>Desenhe a floresta. Quantos conjuntos existem e quem são os representantes?</li>
+    <li>Explique passo a passo a chamada <code>findSet(7)</code>: cada chamada recursiva, o que cada linha testa e o que cada chamada devolve.</li>
+    <li>Qual o melhor e o pior caso de findSet <i>nesta</i> floresta (quantas chamadas)? E em geral, em função de n?</li>
+    <li>Execute <code>union(1, 7)</code> com a versão do slide. Mostre o vetor pai final e a nova altura.</li>
+  </ol>
+  <p class="caption">Responda no chat (texto ou foto). Depois confira o desenho no explorador da seção 2.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte principal</span>
+  <p>Slide da Aula 11, de "Implementação alternativa… Florestas de conjuntos disjuntos" até a tabela "Comparando as duas implementações" (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Para aprofundar: Cormen, 3ª ed., seção 21.3. Em pt-BR: <a href="https://users.ime.usp.br/~pf/analise_de_algoritmos/aulas/union-find.html">Feofiloff, "A estrutura union-find"</a> (a "segunda implementação", com o vetor chefe, é esta floresta). Dúvidas: pergunte no chat.</p>
+</div>
+
+<div class="pager">
+  <a href="0001-conjuntos-disjuntos-listas.html"><small>← anterior</small>11.1 Conjuntos disjuntos com listas ligadas</a>
+  <a class="next" href="0003-union-by-rank.html"><small>próxima →</small>11.3 Union by rank</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const PAI = [5, 0, 3, 3, 2, 5, 5, 3];
+  const fig = (id, pai, st = {}, opts = {}) => { const v = Forest.view(opts); document.getElementById(id).append(v.el); v.set({ pai, ...st }, false); return v; };
+
+  // seção 1: lista × floresta
+  document.getElementById('figList').append(ListSets.render({ sets: [{ name: 'S1', elems: ['5', '0', '6', '1'] }, { name: 'S2', elems: ['3', '2', '7', '4'] }],
+    rep: { 5: 'S1', 0: 'S1', 6: 'S1', 1: 'S1', 3: 'S2', 2: 'S2', 7: 'S2', 4: 'S2' }, showSize: false }));
+  fig('figForest', PAI, { marks: { 5: 'root', 3: 'root' }, tags: { 5: 'raiz', 3: 'raiz' } });
+
+  // seção 2: explorador
+  const exV = Forest.view({ onPick: pick }); exV.el.classList.add('pick');
+  document.getElementById('ex').append(exV.el);
+  let EX = PAI.slice();
+  function pick(i) {
+    const p = Forest.path(EX, i), marks = {}, edges = {}, amarks = {};
+    p.forEach((v, k) => { marks[v] = k === p.length - 1 ? 'root' : k ? 'path' : 'cur'; amarks[v] = k === p.length - 1 ? 'ok' : 'cmp'; if (k < p.length - 1) edges[v] = 'hot'; });
+    exV.set({ pai: EX, marks, edges, amarks, tags: { [i]: 'x' } }, false);
+    document.getElementById('exInfo').innerHTML = `findSet(${i}): ${p.join(' → ')}. Raiz (representante) = <b>${p[p.length - 1]}</b>. Profundidade de ${i} = ${p.length - 1}, então <b>${p.length}</b> chamada(s).`;
+  }
+  function drawEx() {
+    const v = document.getElementById('exIn').value.split(/[\s,;]+/).filter(Boolean).map(Number), err = Forest.validate(v);
+    document.getElementById('exErr').textContent = err || '';
+    if (err) return;
+    EX = v;
+    const r = EX.map((p, i) => (p === i ? i : -1)).filter((i) => i >= 0), marks = {};
+    r.forEach((i) => (marks[i] = 'root'));
+    exV.set({ pai: EX, marks }, false);
+    document.getElementById('exInfo').textContent = `${r.length} conjunto(s), raízes ${r.join(', ')}. Altura da floresta: ${Forest.height(EX)}. Clique num nó.`;
+  }
+  document.getElementById('exGo').onclick = drawEx;
+  drawEx();
+
+  // seção 3
+  fig('figMake', [0, 1, 2, 3, 4, 5, 6, 7], { marks: { 0: 'root', 1: 'root', 2: 'root', 3: 'root', 4: 'root', 5: 'root', 6: 'root', 7: 'root' } });
+
+  // seção 4: findSet
+  const fv = Forest.view();
+  const stackBox = APA.el('div');
+  const fp = StepPlayer.mount(document.getElementById('findPlayer'), { code: Forest.FIND_CODE, stack: true, speed: 1300, steps: Forest.traceFind(PAI, 1),
+    extra: (st, box) => { fv.set(st.fs); stackBox.replaceChildren(Forest.stack(st.stack)); box.append(APA.el('div', { class: 'figrow' }, fv.el, stackBox)); } });
+  const LISTA = [0, 0, 1, 2, 3, 4, 5, 6];
+  const fb = document.getElementById('fBtns');
+  [['findSet(1) no exemplo', PAI, 1], ['findSet(4) no exemplo', PAI, 4], ['melhor caso: findSet(3)', PAI, 3], ['pior caso: árvore-lista, findSet(7)', LISTA, 7]].forEach(([lab, pai, x], k) =>
+    fb.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+      [...fb.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); fp.load(Forest.traceFind(pai, x)); } }, lab)));
+
+  // seção 5
+  fig('figBest', PAI, { marks: { 3: 'root' }, tags: { 3: 'x' } });
+  fig('figWorst', LISTA, { marks: { 7: 'cur', 0: 'root' }, edges: { 1: 'hot', 2: 'hot', 3: 'hot', 4: 'hot', 5: 'hot', 6: 'hot', 7: 'hot' }, tags: { 7: 'x' } });
+
+  // seção 6: union
+  const uv = Forest.view();
+  const up = APA.el('div');
+  document.getElementById('unionPlayer').append(up);
+  let uplayer = null;
+  function loadUnion(idea) {
+    up.replaceChildren(); up.className = '';
+    uplayer = StepPlayer.mount(up, { code: Forest.UNION_CODE[idea], stack: true, speed: 1500, steps: Forest.traceUnion(PAI, 1, 4, idea),
+      extra: (st, box) => { uv.set(st.fs); box.append(uv.el); } });
+  }
+  const ub = document.getElementById('uBtns');
+  [['ideia 1: pai[x] = y', 1], ['ideia 2: pai[findSet(x)] = y', 2], ['ideia 3: pai[findSet(x)] = findSet(y)', 3]].forEach(([lab, i], k) =>
+    ub.append(APA.el('button', { class: 'btn' + (k ? '' : ' on'), type: 'button', onclick: (e) => {
+      [...ub.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); loadUnion(i); } }, lab)));
+  loadUnion(1);
+
+  // seção 7
+  fig('figTall', [1, 2, 3, 4, 5, 6, 7, 7], { marks: { 7: 'root' } });
+  fig('figShort', [0, 0, 0, 0, 1, 1, 2, 3], { marks: { 0: 'root' } });
+
+  Quiz.mount(document.getElementById('quiz'), [
+    { q: 'Num vetor pai, como se reconhece a raiz de uma árvore?',
+      options: ['$pai[i] = i$', '$pai[i] = 0$', '$pai[i] = -1$', '$pai[i] > i$'], answer: 0,
+      explain: 'A raiz aponta para si mesma. É o caso base do findSet.' },
+    { q: 'Com <code>pai = [1, 1, 1, 2]</code>, quanto vale findSet(3) e quantas chamadas ele faz?',
+      options: ['1, com 3 chamadas', '2, com 2 chamadas', '1, com 2 chamadas', '3, com 1 chamada'], answer: 0,
+      explain: '3 → 2 → 1, e pai[1] = 1. São 3 nós no caminho, logo 3 chamadas.' },
+    { q: 'O custo do findSet(x) na floresta é proporcional a…',
+      options: ['profundidade de x mais um', 'número total de conjuntos', 'número de filhos de x', 'tamanho do vetor pai'], answer: 0,
+      explain: 'Uma chamada por nó do caminho de x até a raiz.' },
+    { q: 'Por que <code>pai[x] = y</code> (ideia 1) é um union errado?',
+      options: ['ancestrais de x ficam fora', 'a árvore de y se perde', 'cria um ciclo no vetor', 'muda a raiz de y'], answer: 0,
+      explain: 'pai[x] = y muda só a seta de x. Quem está <b>abaixo</b> de x vai junto, porque continua apontando para x. Quem está <b>acima</b> de x (pai, avô… até a raiz) e os outros ramos não apontam para x e ficam na árvore antiga. No exemplo union(1, 4): o 1 vai para a árvore do 4, mas 0, 5 e 6, que estavam no conjunto do 1, ficam de fora. A árvore de y não perde nada, só ganha nós (por isso b está errada).' },
+    { q: 'Na versão do slide, <code>pai[findSet(x)] = findSet(y)</code>, o que domina o custo?',
+      options: ['as duas chamadas de findSet', 'a atribuição no vetor pai', 'a criação do novo conjunto', 'a cópia dos elementos de y'], answer: 0,
+      explain: 'A atribuição é O(1). Cada findSet custa a profundidade, que é O(n) no pior caso.' },
+    { q: 'Pior caso de findSet na floresta sem heurísticas, com $n$ elementos:',
+      options: ['$O(1)$', '$O(\\log n)$', '$O(n)$', '$O(n \\log n)$'], answer: 2,
+      explain: 'Árvore degenerada em lista: o find sobe pelos n nós.' },
+  ]);
+});
+</script>
+</body>
+</html>
