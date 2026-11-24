@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11 · Prova simulada</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/forest.js"></script>
+<style>
+  .q { margin: 28px 0; }
+  .q h2 { margin-bottom: 6px; }
+  .pts { color: var(--muted); font-weight: 400; font-size: 0.85em; }
+  @media print { .widget, .toc { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Prova simulada</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Prova simulada</p>
+<h1>Prova simulada: AGM e conjuntos disjuntos</h1>
+<div class="box warn">
+  <span class="tag">Instruções</span>
+  <ul>
+    <li>Tempo: <b>90 minutos</b>. Valor: 10 pontos.</li>
+    <li>Sem consultar lições, slides ou folha de referência.</li>
+    <li>Responda no papel, como na prova: explique, desenhe e justifique.</li>
+    <li>No fim, mande fotos no chat. A correção é feita lá, questão por questão.</li>
+  </ul>
+</div>
+
+<section class="q">
+<h2>Questão 1 <span class="pts">(2,0 pts)</span></h2>
+<p>No algoritmo de Kruskal, a estrutura de conjuntos disjuntos pode ser implementada com <b>listas ligadas</b>. Considere os conjuntos {m, n, o} e {p, q}.</p>
+<ol type="a">
+  <li><b>(1,0)</b> Explique como um conjunto é representado nessa implementação. Use um diagrama com os dois conjuntos.</li>
+  <li><b>(1,0)</b> Explique passo a passo a chamada <code>union(p, m)</code> e discorra sobre a complexidade da função union. O que muda com a heurística de união ponderada?</li>
+</ol>
+</section>
+
+<section class="q">
+<h2>Questão 2 <span class="pts">(3,0 pts)</span></h2>
+<p>Uma floresta de conjuntos disjuntos com 9 elementos é representada pelo vetor:</p>
+<div id="arr"></div>
+<ol type="a">
+  <li><b>(0,5)</b> Desenhe a floresta e indique os representantes.</li>
+  <li><b>(1,0)</b> Explique passo a passo a chamada <code>find(4)</code> (sem heurísticas). Qual a complexidade da função find em termos do número de elementos? Existe melhor e pior caso? Justifique.</li>
+  <li><b>(0,5)</b> Execute <code>find(4)</code> com <b>path compression</b>. Mostre o vetor pai resultante.</li>
+  <li><b>(1,0)</b> Após o item (c), considere <code>rank[3] = 3</code> e <code>rank[6] = 2</code>. Execute <code>union(7, 2)</code> com <b>union by rank</b>, mostrando pai e rank depois. Explique por que, com union by rank, a altura de uma árvore com n nós nunca passa de log₂ n.</li>
+</ol>
+</section>
+
+<section class="q">
+<h2>Questão 3 <span class="pts">(3,0 pts)</span></h2>
+<p>Considere o grafo G = (V, A):</p>
+<div id="graph"></div>
+<ol type="a">
+  <li><b>(1,5)</b> Explique o algoritmo de <b>Prim</b> com o vértice <b>a</b> como raiz, passo a passo. Mostre, em cada iteração, o vértice extraído de Q e os valores de chave e pai. Qual o custo da árvore?</li>
+  <li><b>(1,0)</b> Qual a complexidade do Prim com listas de adjacência e Q em heap binário mínimo? Justifique linha por linha.</li>
+  <li><b>(0,5)</b> O que muda na complexidade se G for representado por uma matriz de adjacência? Por quê?</li>
+</ol>
+</section>
+
+<section class="q">
+<h2>Questão 4 <span class="pts">(2,0 pts)</span></h2>
+<ol type="a">
+  <li><b>(1,0)</b> Rode o <b>Kruskal</b> no grafo da Questão 3. Liste as arestas na ordem em que são examinadas, dizendo quais entram e quais são descartadas, e quantas vezes findSet e union são chamadas.</li>
+  <li><b>(1,0)</b> Usando conjuntos disjuntos com union by rank e path compression, qual a complexidade do Kruskal? Qual parte do algoritmo é o gargalo? Justifique.</li>
+</ol>
+</section>
+
+<div class="box">
+  <span class="tag">Depois da prova</span>
+  <p>Mande as fotos no chat. Eu corrijo cada item com a nota e o que faltou, e as lições a revisar.</p>
+</div>
+
+<div class="pager">
+  <a href="0005-complexidade-kruskal-prim.html"><small>← anterior</small>11.5 Complexidade do Kruskal e do Prim</a>
+  <a class="next" href="../index.html"><small>índice →</small>APA · Prova 2</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const v = Forest.view(); v.set({ pai: [3, 0, 3, 3, 1, 6, 6, 5, 6] }, false);
+  // só o vetor: a pessoa desenha a floresta
+  document.getElementById('arr').append(v.el.lastChild);
+  const G = { pos: { a: [40, 110], b: [180, 30], c: [180, 190], d: [330, 110], e: [470, 190], f: [470, 30] },
+    edges: [['a', 'b', 6], ['a', 'c', 3], ['b', 'c', 2], ['b', 'd', 5], ['c', 'd', 4], ['c', 'e', 7], ['d', 'e', 1], ['d', 'f', 8], ['e', 'f', 6]] };
+  document.getElementById('graph').append(GraphView.render(G, {}));
+});
+</script>
+</body>
+</html>

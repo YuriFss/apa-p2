@@ -4,7 +4,7 @@ Lições interativas de Análise e Projeto de Algoritmos (UFPB) para a Prova 2: 
 
 **Acesse pelo navegador:** https://yurifss.github.io/apa-p2/
 
-- `lessons/`: lições com animações passo a passo, quizzes e exercícios
+- `lessons/`: lições com exemplos resolvidos, animações passo a passo, quizzes e exercícios, e uma prova simulada da Aula 11
 - `reference/`: folha de referência da Aula 11
 - `assets/`: estilo e componentes compartilhados (floresta animada, heap, grafo, listas ligadas, quiz)
 

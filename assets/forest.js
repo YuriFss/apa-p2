@@ -147,26 +147,26 @@
       vars: { 'chamadas feitas': frames.length, 'nós no caminho': chain.length },
       fs: { pai: P, marks: { ...marks }, edges: { ...edges }, amarks: { ...amarks }, tags: { ...tags } } });
     frames.push({ x, ret: null }); marks[x] = 'cur'; tags[x] = 'x';
-    snap(0, `Chamada inicial <b>findSet(${x})</b>. Objetivo: subir pelos ponteiros pai até a raiz (o nó que aponta para si mesmo).`);
+    snap(0, `Chamamos <b>findSet(${x})</b>.`);
     for (let k = 0; k < chain.length; k++) {
       const v = chain[k];
       amarks[v] = 'cmp';
-      snap(1, `Na chamada findSet(${v}): lê <code>pai[${v}] = ${P[v]}</code> e compara com ${v}. ${P[v] === v ? `<b>São iguais</b>: ${v} aponta para si mesmo, então ${v} é a raiz.` : `<b>São diferentes</b>: ${v} não é raiz.`}`);
+      snap(1, `pai[${v}] = ${P[v]}. ${P[v] === v ? `${v} aponta para si mesmo: é a <b>raiz</b>.` : `Não é ${v}, então ${v} não é a raiz.`}`);
       if (P[v] === v) {
         marks[v] = 'root'; amarks[v] = 'ok'; frames[frames.length - 1].ret = v; tags[v] = 'raiz';
-        snap(2, `<code>return ${v}</code>. A chamada mais funda terminou. Agora as chamadas de cima, que estavam esperando, recebem o ${v} na volta.`);
+        snap(2, `Devolve ${v}. Agora começa a volta.`);
         break;
       }
       amarks[v] = 'dim'; marks[v] = 'path'; edges[v] = 'hot';
       const p = P[v];
       frames.push({ x: p, ret: null }); marks[p] = 'cur';
-      snap(3, `<code>return findSet(pai[${v}])</code> = <code>return findSet(${p})</code>: segue a seta de ${v} para ${p} (laranja) e faz uma <b>nova chamada</b>. A chamada findSet(${v}) fica parada, esperando a resposta.`);
+      snap(3, `Chama <b>findSet(${p})</b>. findSet(${v}) fica esperando a resposta.`);
     }
     for (let k = frames.length - 2; k >= 0; k--) {
       frames[k].ret = r; tags[frames[k].x] = '→ ' + r;
-      snap(3, `findSet(${frames[k + 1].x}) devolveu ${r}, então findSet(${frames[k].x}) também devolve <b>${r}</b> (a linha 3 só repassa o resultado).`);
+      snap(3, `findSet(${frames[k].x}) recebeu ${r} e devolve ${r}.`);
     }
-    snap(null, `Resultado: <b>findSet(${x}) = ${r}</b>. Caminho: ${chain.join(' → ')}. Foram <b>${chain.length}</b> chamadas, uma por nó do caminho (profundidade de ${x} + 1). O custo é proporcional à <b>profundidade</b> do nó.`);
+    snap(null, `Fim. findSet(${x}) = <b>${r}</b>. Caminho ${chain.join(' → ')}: ${chain.length} chamadas, uma por nó.`);
     return out;
   }
 
@@ -182,7 +182,7 @@
     const vars = () => ({ conjuntos: roots(P).length, altura: height(P) });
     const snap = (line, note) => out.push({ line, note, vars: vars(), fs: { pai: P.slice(), marks: { ...marks }, edges: { ...edges }, amarks: { ...amarks }, tags: { ...tags } } });
     marks[x] = 'cur'; marks[y] = 'cur'; tags[x] = 'x'; tags[y] = 'y';
-    snap(0, `<b>union(${x}, ${y})</b>: ${x} está na árvore de raiz ${root(P, x)}, ${y} na árvore de raiz ${root(P, y)}. Altura atual: ${height(P)}.`);
+    snap(0, `Chamamos <b>union(${x}, ${y})</b>.`);
     const climb = (v, name) => {
       const c = path(P, v);
       c.slice(0, -1).forEach((u) => { edges[u] = 'hot'; if (marks[u] !== 'cur') marks[u] = 'path'; });
@@ -193,28 +193,28 @@
     if (idea === 1) { child = x; parent = y; }
     if (idea >= 2) {
       const c = climb(x, 'rx');
-      snap(1, `rx = findSet(${x}): sobe ${c.join(' → ')}. rx = <b>${c[c.length - 1]}</b> (${c.length} chamadas).`);
+      snap(1, `findSet(${x}) sobe ${c.join(' → ')}. rx = <b>${c[c.length - 1]}</b>.`);
       child = c[c.length - 1]; parent = y;
     }
     if (idea === 3) {
       const c = climb(y, 'ry');
-      snap(2, `ry = findSet(${y}): sobe ${c.join(' → ')}. ry = <b>${c[c.length - 1]}</b> (${c.length} chamadas).`);
+      snap(2, `findSet(${y}) sobe ${c.join(' → ')}. ry = <b>${c[c.length - 1]}</b>.`);
       parent = c[c.length - 1];
     }
     const old = P[child];
     edges = {}; Object.keys(marks).forEach((k) => { if (marks[k] === 'path') delete marks[k]; });
     P[child] = parent; edges[child] = 'new'; amarks[child] = 'ok';
     const line = idea === 1 ? 1 : idea === 2 ? 2 : 3;
-    snap(line, `<code>pai[${child}] = ${parent}</code>: a seta de ${child}, que apontava para ${old}, agora aponta para ${parent} (verde). ${idea === 1 ? `Só o ${child} e o que está <i>abaixo</i> dele mudam de árvore.` : `Toda a árvore de ${child} vai junto, pendurada em ${parent}.`}`);
+    snap(line, `<b>pai[${child}] = ${parent}</b>. Antes era ${old}. ${idea === 1 ? `Só ${child} muda de árvore.` : `A árvore de ${child} inteira vai junto.`}`);
     const n = roots(P).length;
     marks = {}; tags = {};
     if (idea === 1) {
       const lost = P.map((_, i) => i).filter((i) => root(pai, i) === root(pai, x) && root(P, i) !== root(P, x));
       lost.forEach((i) => (marks[i] = 'bad'));
-      if (lost.length) snap(null, `<b>Falhou.</b> Os nós em vermelho (${lost.join(', ')}) estavam no mesmo conjunto que ${x} e ficaram de fora: agora há ${n} conjuntos, quando deveria haver um só com todos. Só daria certo se ${x} fosse a raiz da sua árvore.`);
+      if (lost.length) snap(null, `<b>Falhou.</b> ${lost.join(', ')} (vermelho) ficaram de fora. Ainda há ${n} conjuntos.`);
       else snap(null, `Deu certo só porque ${x} era a raiz da sua árvore. Em geral não é.`);
     } else {
-      snap(null, `<b>Funciona</b>: os elementos dos dois conjuntos estão agora numa só árvore (${n} conjunto(s)). Altura final: <b>${height(P)}</b>.${idea === 2 ? ' Pendurar a raiz num nó fundo (y) deixou a árvore mais alta do que o necessário.' : ' Pendurar raiz em raiz faz a árvore crescer menos que na ideia 2.'}`);
+      snap(null, `<b>Funciona</b>: um conjunto só. Altura: <b>${height(P)}</b>.`);
     }
     return out;
   }
@@ -238,38 +238,38 @@
     marks[x] = 'cur'; marks[y] = 'cur'; tags[x] = 'x'; tags[y] = 'y';
     snap(0, `${head}<b>union(${x}, ${y})</b>.`);
     tags = {}; const cx = climb(x, 'rx'), rx = cx[cx.length - 1];
-    snap(1, `rx = findSet(${x}): ${cx.join(' → ')}. <b>rx = ${rx}</b>, com rank ${K[rx]}.`);
+    snap(1, `findSet(${x}) sobe ${cx.join(' → ')}. rx = <b>${rx}</b>, rank ${K[rx]}.`);
     const cy = climb(y, rx === path(P, y).slice(-1)[0] ? 'rx = ry' : 'ry'), ry = cy[cy.length - 1];
-    snap(2, `ry = findSet(${y}): ${cy.join(' → ')}. <b>ry = ${ry}</b>, com rank ${K[ry]}.`);
-    if (rx === ry) { snap(3, `rx = ry = ${rx}: já estão no mesmo conjunto, nada a fazer.`); return out; }
-    snap(3, `rx = ${rx} ≠ ry = ${ry}: conjuntos diferentes, segue.`);
+    snap(2, `findSet(${y}) sobe ${cy.join(' → ')}. ry = <b>${ry}</b>, rank ${K[ry]}.`);
+    if (rx === ry) { snap(3, `rx = ry: mesmo conjunto. Nada a fazer.`); return out; }
+    snap(3, `rx ≠ ry: conjuntos diferentes. Segue.`);
     edges = {}; rmarks[rx] = 'cmp'; rmarks[ry] = 'cmp';
     const a = K[rx], b = K[ry];
-    snap(4, `Compara os ranks das <b>raízes</b>: rank[${rx}] = ${a} e rank[${ry}] = ${b}. ${a < b ? `${a} &lt; ${b}: a árvore de ${rx} é a mais baixa.` : `${a} não é menor que ${b}.`}`);
+    snap(4, `rank[${rx}] = ${a} é menor que rank[${ry}] = ${b}? ${a < b ? '<b>Sim.</b>' : 'Não.'}`);
     let child, par;
     if (a < b) { child = rx; par = ry; }
     else {
-      snap(6, `rank[${rx}] = ${a} ${a > b ? '&gt;' : '='} rank[${ry}] = ${b}. ${a > b ? `A árvore de ${ry} é a mais baixa.` : 'Não é maior: os ranks são <b>iguais</b>.'}`);
-      if (a > b) { child = ry; par = rx; } else { snap(8, `Empate. Qualquer uma pode ser a nova raiz. Convenção (a mesma do slide): a raiz de x vai para baixo da raiz de y.`); child = rx; par = ry; }
+      snap(6, `rank[${rx}] = ${a} é maior que rank[${ry}] = ${b}? ${a > b ? '<b>Sim.</b>' : 'Não: <b>empate</b>.'}`);
+      if (a > b) { child = ry; par = rx; } else { snap(8, `Empate: a raiz de x desce (convenção do slide).`); child = rx; par = ry; }
     }
     const old = P[child]; P[child] = par; edges[child] = 'new'; amarks[child] = 'ok'; marks[child] = 'cur'; marks[par] = 'root';
     tags = { [par]: 'nova raiz' };
     const linkLine = a < b ? 5 : a > b ? 7 : 9;
-    snap(linkLine, `<code>pai[${child}] = ${par}</code>: a raiz <b>mais baixa</b> (${child}) passa a apontar para a mais alta (${par}). A árvore de ${child} inteira vai junto, um nível abaixo de ${par}.${a !== b ? ` Como ela era mais baixa, a altura da árvore de ${par} <b>não muda</b>: nenhum rank é alterado.` : ''}`);
+    snap(linkLine, `<b>pai[${child}] = ${par}</b>. ${a !== b ? `A mais baixa desce. A altura não muda.` : `A árvore de ${child} desce um nível.`}`);
     if (a === b) {
       K[par]++; rmarks = { [par]: 'ok' };
-      snap(10, `Com ranks iguais (${a}), a árvore de ${child} pendurada embaixo de ${par} fica com profundidade ${a} + 1. A altura da nova árvore é ${a + 1}, então <b>rank[${par}] = ${K[par]}</b>. É o <b>único</b> caso em que um rank aumenta.`);
+      snap(10, `<b>rank[${par}] = ${K[par]}</b>. A altura subiu 1, porque eram iguais.`);
     }
     return out;
   }
 
   function traceRankSequence(n, ops) {
     const P = [...Array(n).keys()], K = Array(n).fill(0), out = [];
-    out.push({ line: null, note: `makeSet nos ${n} elementos: cada um é raiz de si mesmo, com <b>rank 0</b> (árvore de altura 0).`,
+    out.push({ line: null, note: `makeSet nos ${n} elementos. Todos com rank 0.`,
       vars: { conjuntos: n, 'altura máx.': 0, 'log₂ n': Math.log2(n).toFixed(2) }, fs: { pai: P.slice(), rank: K.slice() } });
     ops.forEach(([x, y], k) => traceUnionRank(P, K, x, y, `[${k + 1}/${ops.length}] `, out));
     const last = out[out.length - 1];
-    out.push({ line: null, note: `Fim da sequência. Altura máxima ${height(P)} com ${n} elementos; o limite é log₂ ${n} = ${Math.log2(n).toFixed(2)}.`,
+    out.push({ line: null, note: `Fim. Altura ${height(P)} com ${n} elementos. Limite: log₂ ${n} = ${Math.log2(n).toFixed(2)}.`,
       vars: last.vars, fs: { pai: P.slice(), rank: K.slice(), marks: Object.fromEntries(roots(P).map((r) => [r, 'root'])) } });
     return out;
   }

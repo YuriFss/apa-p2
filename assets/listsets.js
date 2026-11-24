@@ -30,7 +30,7 @@
         APA.el('small', { html: gone ? 'descartado' : fields.join('<br>') })));
       const chain = APA.el('div', { class: 'lchain' });
       s.elems.forEach((e, i) => {
-        chain.append(APA.el('div', { class: 'lnode ' + ((st.marks || {})[e] || '') },
+        chain.append(APA.el('div', { class: 'lnode ' + ((st.marks || {})[e] || ''), 'data-e': e },
           APA.el('b', {}, e), APA.el('span', { class: 'rep' }, 'rep → ' + st.rep[e])));
         chain.append(APA.el('span', { class: 'arrow' + (st.newLink === e ? ' new' : '') }, i < n - 1 ? '→' : ''));
       });
@@ -54,11 +54,11 @@
   function traceFind(lists, x) {
     const st = init(lists), out = [];
     const push = (line, note, vars) => out.push({ line, note, vars, ls: copy(st) });
-    push(0, `<b>findSet(${x})</b>: devolve o conjunto de ${x}.`, { x });
+    push(0, `Chamamos <b>findSet(${x})</b>.`, { x });
     st.marks[x] = 'cur';
-    push(1, `O vetor <code>ptr</code> guarda, para cada elemento, o endereço do seu nó. Acesso direto pela chave: <b>O(1)</b>, sem percorrer lista nenhuma.`, { x, e: 'nó ' + x });
+    push(1, `ptr[${x}] dá o nó de ${x} direto. O(1).`, { x, e: 'nó ' + x });
     st.cur = st.rep[x];
-    push(2, `Devolve <code>e.rep</code> = <b>${st.rep[x]}</b>, cujo representante é o head, <b>${setOf(st, x).elems[0]}</b>. Total: 2 passos constantes, então findSet é <b>O(1)</b>.`, { x, e: 'nó ' + x, retorno: st.rep[x] });
+    push(2, `Devolve ${x}.rep = <b>${st.rep[x]}</b>. O(1).`, { x, e: 'nó ' + x, retorno: st.rep[x] });
     return out;
   }
 
@@ -70,34 +70,59 @@
     const L = pond ? { cmp: 3, swap: 4, link: 5, tail: 6, size: 7, loop: 8, upd: 9 } : { link: 3, tail: 4, loop: 5, upd: 6 };
     const vars = () => ({ Sx: Sx ? Sx.name : '—', Sy: Sy ? Sy.name : '—', 'rep atualizados': count });
     const push = (line, note) => { out.push({ line, note, vars: vars(), ls: copy(st) }); st.fmark = {}; st.newLink = null; };
-    push(0, `<b>union(${x}, ${y})</b>: ${pond ? 'anexa a lista <b>menor</b> à maior.' : 'anexa a lista de y ao fim da lista de x.'}`);
+    push(0, `Chamamos <b>union(${x}, ${y})</b>.`);
     Sx = setOf(st, x); st.marks[x] = 'cur'; st.cur = Sx.name;
-    push(1, `findSet(${x}): pega o nó ${x} (via ptr) e segue <code>${x}.rep</code>, que aponta para o objeto <b>${Sx.name}</b>. Então Sx = ${Sx.name}, o conjunto de ${x}. Custo O(1).`);
+    push(1, `findSet(${x}) = <b>${Sx.name}</b>. Nada muda nas listas.`);
     Sy = setOf(st, y); st.marks[y] = 'cur';
-    push(2, `findSet(${y}): segue <code>${y}.rep</code> e chega ao objeto <b>${Sy.name}</b>. Então Sy = ${Sy.name}. Custo O(1). Até aqui nada mudou nas listas: só descobrimos quais são os dois conjuntos.`);
-    if (Sx === Sy) { push(2, `${x} e ${y} já estão no mesmo conjunto. O Kruskal nunca chama union nesse caso: ele testa <code>findSet(u) ≠ findSet(v)</code> antes.`); return out; }
+    push(2, `findSet(${y}) = <b>${Sy.name}</b>. Nada muda nas listas.`);
+    if (Sx === Sy) { push(2, `Mesmo conjunto. O Kruskal nunca chama union nesse caso.`); return out; }
     if (pond) {
-      push(L.cmp, `Compara os tamanhos: ${Sx.name}.size = ${Sx.size}, ${Sy.name}.size = ${Sy.size}. O campo size é lido em O(1).`);
+      push(L.cmp, `${Sx.name}.size = ${Sx.size} é menor que ${Sy.name}.size = ${Sy.size}? ${Sx.size < Sy.size ? '<b>Sim.</b>' : 'Não.'}`);
       if (Sx.size < Sy.size) {
         [Sx, Sy] = [Sy, Sx]; st.cur = Sx.name;
-        push(L.swap, `${Sy.name} é menor: troca os papéis. Agora Sx = <b>${Sx.name}</b> (a maior) e Sy = <b>${Sy.name}</b> (a menor, que será anexada).`);
+        push(L.swap, `Troca: Sx = <b>${Sx.name}</b> (a maior), Sy = <b>${Sy.name}</b> (a menor).`);
       }
     }
     const tailX = Sx.tail, moved = Sy.elems.slice();
     Sx.elems.push(...moved); Sy.elems = []; Sy.note = `(os nós ${moved.join(', ')} agora estão na corrente de ${Sx.name}, mas ainda apontam para cá)`;
     moved.forEach((e) => (st.marks[e] = 'stale')); st.newLink = tailX; st.fmark = { [Sx.name + '.tail']: 'stale' };
-    push(L.link, `Muda <b>um único ponteiro</b>: o next de ${tailX} (o tail de ${Sx.name}), que era ∅, passa a apontar para ${moved[0]} (o head de ${Sy.name}). Seta laranja. Agora, quem anda pelos next a partir de ${Sx.head} percorre os ${Sx.elems.length} nós. Duas coisas ficaram desatualizadas: <b>${Sx.name}.tail</b> ainda diz ${tailX} (mas o último nó é ${moved[moved.length - 1]}), e os nós ${moved.join(', ')} ainda têm <b>rep → ${Sy.name}</b>. Os próximos passos consertam isso.`);
+    push(L.link, `<b>${tailX}.next = ${moved[0]}</b> (seta laranja). As listas estão coladas. Ficaram errados: o tail de ${Sx.name} e o rep de ${moved.join(', ')} (vermelho).`);
     Sx.tail = Sy.tail; st.fmark = { [Sx.name + '.tail']: 'fixed' };
-    push(L.tail, `Conserta o campo tail: ${Sx.name}.tail = ${Sy.name}.tail = <b>${Sx.tail}</b>. Isso importa para a <i>próxima</i> union que anexar algo a ${Sx.name}: ela vai pendurar no tail, e ele precisa ser o último nó de verdade. Custo O(1).`);
+    push(L.tail, `<b>${Sx.name}.tail = ${Sx.tail}</b>. O tail está certo de novo.`);
     if (pond) { Sx.size += Sy.size; st.fmark = { [Sx.name + '.size']: 'fixed' }; push(L.size, `${Sx.name}.size = ${Sx.size}. O(1).`); }
     for (const z of moved) {
-      push(L.loop, `Próximo elemento da lista anexada: <b>${z}</b>.`);
+      push(L.loop, `Próximo nó da lista anexada: <b>${z}</b>.`);
       st.rep[z] = Sx.name; st.marks[z] = 'fixed'; count++;
-      push(L.upd, `${z}.rep = ${Sx.name}. Ponteiros atualizados até agora: <b>${count}</b>.`);
+      push(L.upd, `<b>${z}.rep = ${Sx.name}</b>. Atualizados: ${count}.`);
     }
     st.gone.push(Sy.name); Sy.note = '';
-    push(null, `Fim. Ninguém mais aponta para ${Sy.name}, que é descartado. O laço rodou <b>${count}</b> vez(es), uma por elemento da lista anexada. Esse laço domina o custo: no pior caso ele é <b>O(n)</b>.`);
+    push(null, `Fim. ${Sy.name} é descartado. O laço rodou <b>${count}</b> vezes, uma por nó anexado.`);
     return out;
+  }
+
+
+  // View animada: v = ListSets.view(); v.el; v.set(st). Cada nó (data-e) desliza da posição antiga para a nova.
+  function view() {
+    const el = document.createElement('div');
+    let last = null;
+    const rects = () => { const base = el.getBoundingClientRect(), r = {};
+      el.querySelectorAll('[data-e]').forEach((n) => { const b = n.getBoundingClientRect(); r[n.dataset.e] = [b.left - base.left, b.top - base.top]; }); return r; };
+    function set(st) {
+      const before = last;
+      el.replaceChildren(render(st));
+      requestAnimationFrame(() => {
+        const now = rects();
+        if (before && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          el.querySelectorAll('[data-e]').forEach((n) => {
+            const a = before[n.dataset.e], b = now[n.dataset.e];
+            if (!a || (a[0] === b[0] && a[1] === b[1])) return;
+            n.animate([{ transform: `translate(${a[0] - b[0]}px, ${a[1] - b[1]}px)` }, { transform: 'none' }], { duration: 650, easing: 'ease-in-out' });
+          });
+        }
+        last = now;
+      });
+    }
+    return { el, set };
   }
 
   function parse(text) {
@@ -109,5 +134,5 @@
     return lists;
   }
 
-  window.ListSets = { render, traceFind, traceUnion, parse, FIND_CODE, UNION_CODE, UNION_POND_CODE };
+  window.ListSets = { render, view, traceFind, traceUnion, parse, FIND_CODE, UNION_CODE, UNION_POND_CODE };
 })();

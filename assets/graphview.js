@@ -42,27 +42,27 @@
     const snap = (line, note, extra = {}) => out.push({ line, note,
       vars: { 'arestas examinadas': nEdge, 'chamadas de findSet': nFind, 'chamadas de union': nUnion, custo: cost },
       gs: { edge: { ...edge }, sets: sets.map((s) => s.slice()), ...extra } });
-    snap(3, `makeSet em cada um dos ${sets.length} vértices: cada vértice começa no seu próprio conjunto.`);
-    snap(4, `Arestas em ordem: ${edges.map(([u, v, w]) => `${u}–${v}(${w})`).join(', ')}. O laço da linha 5 vai rodar <b>${edges.length}</b> vezes, uma por aresta.`);
+    snap(3, `makeSet nos ${sets.length} vértices. Cada um é um conjunto.`);
+    snap(4, `Ordem: ${edges.map(([u, v, w]) => `${u}–${v}(${w})`).join(', ')}. O laço roda ${edges.length} vezes.`);
     for (const [u, v, w] of edges) {
       const k = key(u, v); nEdge++; edge[k] = 'hot';
-      snap(5, `Aresta ${nEdge} de ${edges.length}: <b>(${u}, ${v})</b>, peso ${w}.`, { node: { [u]: 'hot', [v]: 'hot' } });
+      snap(5, `Aresta ${nEdge} de ${edges.length}: <b>${u}–${v}</b> (peso ${w}).`, { node: { [u]: 'hot', [v]: 'hot' } });
       const iu = find(u); nFind++;
-      snap(6, `<b>1ª chamada nesta aresta:</b> findSet(${u}) = ${sets[iu][0]}. Contador de findSet: ${nFind}.`, { node: { [u]: 'hot' }, tags: { [u]: 'findSet=' + sets[iu][0] }, hotSets: [iu] });
+      snap(6, `1ª chamada: findSet(${u}) = <b>${sets[iu][0]}</b>.`, { node: { [u]: 'hot' }, tags: { [u]: 'findSet=' + sets[iu][0] }, hotSets: [iu] });
       const iv = find(v); nFind++;
-      snap(6, `<b>2ª chamada nesta aresta:</b> findSet(${v}) = ${sets[iv][0]}. Contador de findSet: ${nFind}. Compara: ${sets[iu][0]} ${iu === iv ? '=' : '≠'} ${sets[iv][0]}.`,
+      snap(6, `2ª chamada: findSet(${v}) = <b>${sets[iv][0]}</b>. ${sets[iu][0]} ${iu === iv ? '=' : '≠'} ${sets[iv][0]}.`,
         { node: { [u]: 'hot', [v]: 'hot' }, tags: { [u]: 'findSet=' + sets[iu][0], [v]: 'findSet=' + sets[iv][0] }, hotSets: [iu, iv] });
       if (iu === iv) {
         edge[k] = 'bad';
-        snap(6, `Representantes iguais: ${u} e ${v} já estão na mesma árvore. A aresta fecharia um ciclo e é <b>descartada</b>. Mesmo assim, as 2 chamadas de findSet foram feitas.`);
+        snap(6, `Iguais: fecharia um ciclo. <b>Descartada.</b>`);
       } else {
         edge[k] = 'ok'; cost += w;
-        snap(7, `Representantes diferentes: a aresta (${u}, ${v}) entra na solução.`);
+        snap(7, `Diferentes: <b>${u}–${v} entra</b> na solução.`);
         sets[iu].push(...sets[iv]); sets.splice(iv, 1); nUnion++;
-        snap(8, `union(${u}, ${v}): os dois conjuntos viram um só. Contador de union: ${nUnion}.`, { hotSets: [find(u)] });
+        snap(8, `union(${u}, ${v}): os dois conjuntos viram um.`, { hotSets: [find(u)] });
       }
     }
-    snap(null, `Fim. O laço rodou ${edges.length} vezes e cada volta chamou findSet <b>2 vezes</b> (uma para u e outra para v): ${edges.length} × 2 = <b>${nFind}</b> chamadas = 2A. union só roda quando a aresta entra: <b>${nUnion}</b> = V − 1. Custo da AGM: ${cost}.`);
+    snap(null, `Fim. findSet: ${edges.length} × 2 = <b>${nFind}</b> = 2A. union: <b>${nUnion}</b> = V − 1. Custo: ${cost}.`);
     return out;
   }
 

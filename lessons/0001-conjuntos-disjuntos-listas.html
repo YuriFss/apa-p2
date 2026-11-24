@@ -25,94 +25,120 @@
 <main>
 <p class="kicker">Aula 11 · Lição 1</p>
 <h1>Conjuntos disjuntos com listas ligadas</h1>
-<p class="lead">Você já sabe rodar o Kruskal à mão: em cada aresta, você "olha" o desenho e vê se ela fecha um ciclo. O computador não vê o desenho. Ele precisa de uma estrutura de dados que responda rápido se <b>u e v já estão na mesma árvore</b>. Essa estrutura é a de <b>conjuntos disjuntos</b>. Esta lição cobre a primeira implementação do slide, com listas ligadas. Ela já caiu em P2: "explique como é representado um conjunto" e "explique o union e sua complexidade".</p>
+<p class="lead">Em cada aresta, o Kruskal pergunta: <b>u e v já estão na mesma árvore?</b> Quem responde é a estrutura de <b>conjuntos disjuntos</b>. Nesta lição vemos a primeira forma de implementá-la, com listas ligadas.</p>
 
 <div class="toc">
   <b>Nesta lição</b>
   <ol>
-    <li><a href="#ops">As três operações e onde o Kruskal as usa</a></li>
-    <li><a href="#repr">Como um conjunto é representado</a></li>
-    <li><a href="#find">makeSet e findSet: O(1)</a></li>
-    <li><a href="#union">union: O(n)</a></li>
+    <li><a href="#kruskal">Onde o Kruskal precisa disso</a></li>
+    <li><a href="#ops">As três operações</a></li>
+    <li><a href="#repr">Como um conjunto é guardado</a></li>
+    <li><a href="#find">findSet: O(1)</a></li>
+    <li><a href="#union">union: exemplo resolvido</a></li>
     <li><a href="#pond">União ponderada</a></li>
-    <li><a href="#prova">Como escrever isso na prova</a></li>
     <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
   </ol>
 </div>
 
-<h2 id="ops">1. As três operações e onde o Kruskal as usa</h2>
-<p>No Kruskal, cada árvore da floresta parcial é um <b>conjunto</b> de vértices. Os conjuntos são <b>disjuntos</b>: nenhum vértice está em dois deles ao mesmo tempo. A estrutura oferece três operações (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">slide da Aula 11</a>; <a href="https://users.ime.usp.br/~pf/analise_de_algoritmos/aulas/union-find.html">Feofiloff, union-find</a>; Cormen, cap. 21.1):</p>
-<div class="box def">
-  <span class="tag">Definições</span>
-  <ul>
-    <li><b>makeSet(v)</b>: cria um conjunto contendo só $v$.</li>
-    <li><b>findSet(v)</b>: devolve o conjunto de $v$, identificado pelo seu <b>representante</b>, um elemento escolhido do conjunto.</li>
-    <li><b>union(u, v)</b>: junta o conjunto de $u$ e o conjunto de $v$ num só.</li>
-  </ul>
-</div>
+<h2 id="kruskal">1. Onde o Kruskal precisa disso</h2>
+<p>Cada árvore da floresta do Kruskal é um <b>conjunto</b> de vértices. Nenhum vértice está em dois conjuntos ao mesmo tempo: eles são <b>disjuntos</b>.</p>
 <pre class="code"><span class="fn">MST-KRUSKAL</span>(G, w)
 1.  S = ∅
 2.  <span class="kw">for</span> cada vértice v ∈ V <span class="kw">do</span>
-3.      makeSet(v)                       <span class="zero">▸ V chamadas</span>
-4.  ordenar as arestas de A por peso w (não decrescente)
+3.      makeSet(v)
+4.  ordenar as arestas de A por peso
 5.  <span class="kw">for</span> cada aresta (u, v) ∈ A, em ordem <span class="kw">do</span>
-6.      <span class="kw">if</span> findSet(u) ≠ findSet(v) <span class="kw">then</span>  <span class="zero">▸ 2 chamadas por aresta: 2A</span>
+6.      <span class="kw">if</span> findSet(u) ≠ findSet(v) <span class="kw">then</span>
 7.          S = S ∪ {(u, v)}
-8.          union(u, v)                  <span class="zero">▸ só quando aceita: V − 1 vezes</span></pre>
-<p>A linha 6 é o teste "u e v estão em árvores diferentes?". Se os representantes forem iguais, u e v já estão ligados e a aresta fecharia um ciclo.</p>
-<div class="box def">
-  <span class="tag">Por que "2 chamadas por aresta"</span>
-  <p>A linha 6 tem <b>duas</b> chamadas escondidas numa só comparação. Ela equivale a:</p>
-<pre class="code">ru = findSet(u)        <span class="zero">▸ chamada 1</span>
-rv = findSet(v)        <span class="zero">▸ chamada 2</span>
-<span class="kw">if</span> ru ≠ rv <span class="kw">then</span> ...</pre>
-  <p>O laço da linha 5 roda <b>uma vez por aresta</b>, ou seja, $A$ vezes, e as duas chamadas acontecem em <b>toda</b> volta, inclusive quando a aresta acaba descartada. Total: $2 \cdot A$ chamadas de findSet. A union, ao contrário, só roda quando a aresta entra.</p>
-</div>
+8.          union(u, v)</pre>
 <div class="box warn">
   <span class="tag">Cuidado com a letra A</span>
-  <p>No pseudocódigo, $G = (V, A)$: <b>V</b> é o conjunto de vértices e <b>A</b> é o conjunto de <b>arestas</b>. Então "<code>for cada aresta (u, v) ∈ A</code>" quer dizer "para cada aresta do grafo", e em cada volta <b>u</b> e <b>v</b> recebem as duas pontas da aresta atual. No grafo abaixo também existe um <i>vértice</i> chamado A, mas são coisas diferentes.</p>
+  <p>Em $G = (V, A)$, <b>A</b> é o conjunto de <b>arestas</b>. Não confunda com o vértice A do exemplo abaixo.</p>
 </div>
-<div class="widget">
-  <div class="wtitle">Kruskal no grafo do seu diagnóstico, contando as chamadas</div>
-  <div id="kPlayer"></div>
-  <p class="caption">Laranja: aresta em exame e os vértices passados ao findSet (o rótulo acima do vértice mostra o representante devolvido). Azul: aresta aceita. Vermelho tracejado: aresta descartada. Embaixo do grafo, os conjuntos atuais (o representante é o primeiro). Acompanhe "chamadas de findSet" subir de 2 em 2.</p>
-</div>
+
+<h3>Exemplo resolvido: o grafo do seu diagnóstico</h3>
+<div id="figG"></div>
+<p>O representante de cada conjunto é o primeiro elemento dele. A linha 6 faz <b>duas</b> chamadas de findSet por aresta:</p>
+<div class="table-wrap"><table>
+<tr><th>Aresta</th><th>findSet(u)</th><th>findSet(v)</th><th>Resultado</th><th>Conjuntos depois</th></tr>
+<tr><td>A–C (1)</td><td>A</td><td>C</td><td>diferentes: entra</td><td>{A, C} {B} {D} {E}</td></tr>
+<tr><td>B–C (2)</td><td>B</td><td>A</td><td>diferentes: entra</td><td>{B, A, C} {D} {E}</td></tr>
+<tr><td>D–E (3)</td><td>D</td><td>E</td><td>diferentes: entra</td><td>{B, A, C} {D, E}</td></tr>
+<tr><td>A–B (4)</td><td>B</td><td>B</td><td><b>iguais: descarta</b></td><td>sem mudança</td></tr>
+<tr><td>B–D (5)</td><td>B</td><td>D</td><td>diferentes: entra</td><td>{B, A, C, D, E}</td></tr>
+<tr><td>C–E (6)</td><td>B</td><td>B</td><td><b>iguais: descarta</b></td><td>sem mudança</td></tr>
+<tr><td>C–D (8)</td><td>B</td><td>B</td><td><b>iguais: descarta</b></td><td>sem mudança</td></tr>
+</table></div>
+<p>Contando as chamadas: 5 makeSet, 7 × 2 = 14 findSet e 4 union.</p>
 <div class="box tip">
-  <span class="tag">No grafo do seu diagnóstico</span>
-  <p>Depois de aceitar A–C, B–C e D–E, os conjuntos são $\{A, B, C\}$ e $\{D, E\}$. Na aresta A–B, <code>findSet(A) = findSet(B)</code>, então ela é descartada. Na B–D, <code>findSet(B) ≠ findSet(D)</code>, então ela entra e <code>union(B, D)</code> junta tudo num conjunto só.</p>
+  <span class="tag">Regra</span>
+  <p>makeSet: <b>V</b> vezes. findSet: <b>2A</b> vezes (duas por aresta, mesmo quando ela é descartada). union: <b>V − 1</b> vezes (uma por aresta aceita).</p>
 </div>
-<p>O slide observa que a implementação escolhida muda a análise do Kruskal, porque makeSet roda $V$ vezes e findSet roda pelo menos $A$ vezes. Por isso vale estudar cada implementação.</p>
+<div class="widget">
+  <div class="wtitle">O mesmo exemplo, animado</div>
+  <div id="kPlayer"></div>
+  <p class="caption">Laranja: aresta em exame. Azul: aceita. Vermelho tracejado: descartada. Embaixo, os conjuntos atuais.</p>
+</div>
 
-<h2 id="repr">2. Como um conjunto é representado</h2>
-<p>Na primeira implementação do slide, <b>cada conjunto é uma lista ligada</b>:</p>
+<h2 id="ops">2. As três operações</h2>
+<div class="box def">
+  <span class="tag">Definições</span>
+  <ul>
+    <li><b>makeSet(v):</b> cria um conjunto só com v.</li>
+    <li><b>findSet(v):</b> devolve o conjunto de v (o seu <b>representante</b>).</li>
+    <li><b>union(u, v):</b> junta o conjunto de u com o conjunto de v.</li>
+  </ul>
+</div>
+
+<h2 id="repr">3. Como um conjunto é guardado</h2>
+<p>Cada conjunto é uma <b>lista ligada</b>.</p>
+<div id="static"></div>
 <ul>
-  <li>Cada <b>elemento</b> (nó da lista) guarda três coisas: o seu <b>valor</b>, um ponteiro <b>next</b> para o próximo nó e um ponteiro <b>rep</b> para o conjunto a que pertence.</li>
-  <li>Cada <b>objeto conjunto</b> S guarda <b>head</b> (primeiro nó) e <b>tail</b> (último nó). Com a heurística da seção 5, guarda também <b>size</b>.</li>
-  <li>O <b>representante</b> do conjunto é o elemento no head.</li>
-  <li>Um vetor <b>ptr</b> guarda, para cada elemento $x$, o endereço do seu nó. Com ele, chegar ao nó de $x$ é $O(1)$.</li>
+  <li><b>Objeto conjunto</b> (caixa da esquerda): guarda <b>head</b> (primeiro nó) e <b>tail</b> (último nó).</li>
+  <li><b>Nó:</b> guarda o <b>valor</b>, o <b>next</b> (seta →) e o <b>rep</b>, que aponta para o objeto conjunto.</li>
+  <li><b>Representante:</b> o head.</li>
+  <li><b>Vetor ptr:</b> ptr[x] dá o nó de x direto.</li>
 </ul>
-<div class="widget">
-  <div class="wtitle">Dois conjuntos: {a, b, c} e {d, e, f, g}</div>
-  <div id="static"></div>
-  <p class="caption">Cada caixa da esquerda é o objeto conjunto. As setas → são os ponteiros next, e ∅ marca o fim da lista. "rep → S1" é o ponteiro de cada nó para o seu conjunto. Esse é o tipo de diagrama que a prova pede.</p>
-</div>
 
-<h2 id="find">3. makeSet e findSet: O(1)</h2>
-<p><b>makeSet(x):</b> cria uma lista nova com um só nó $x$, com head = tail = $x$ e <code>x.rep</code> apontando para essa lista. Isso é um número constante de atribuições: <b>$O(1)$</b>.</p>
-<p><b>findSet(x):</b> pega o nó de $x$ pelo vetor ptr e devolve <code>e.rep</code>. São dois passos constantes, então <b>$O(1)$</b>.</p>
+<h2 id="find">4. findSet: O(1)</h2>
+<pre class="code"><span class="fn">findSet</span>(x)
+1.  e = ptr[x]
+2.  <span class="kw">return</span> e.rep</pre>
+<p>Dois passos de custo constante: <b>O(1)</b>.</p>
+<p><b>makeSet(x)</b> também é O(1): cria uma lista com um nó só.</p>
+<div class="box warn">
+  <span class="tag">Sem o vetor ptr</span>
+  <p>Seria preciso procurar x nas listas: O(n).</p>
+</div>
 <div class="widget">
-  <div class="wtitle">findSet(f), passo a passo</div>
+  <div class="wtitle">findSet(f)</div>
   <div id="findPlayer"></div>
 </div>
-<div class="box warn">
-  <span class="tag">E sem acesso constante? (pergunta do slide)</span>
-  <p>Sem um vetor ptr (ou outra forma de chegar ao nó de $x$ em tempo constante), seria preciso <b>procurar</b> $x$ percorrendo as listas, e isso custa $O(n)$ no pior caso, com $n$ = número de elementos na estrutura. O $O(1)$ do findSet depende do acesso direto.</p>
-</div>
 
-<h2 id="union">4. union: O(n)</h2>
-<p>A ideia do slide é <b>anexar a lista de y ao fim da lista de x</b>. Ligar as listas é barato: basta mudar o next do tail de $x$ e o próprio tail. O problema é que cada nó que veio da lista de $y$ continua com <code>rep</code> apontando para o conjunto antigo. É preciso <b>corrigir esses ponteiros um por um</b>.</p>
+<h2 id="union">5. union: exemplo resolvido</h2>
+<pre class="code"><span class="fn">union</span>(x, y)
+1.  Sx = findSet(x)
+2.  Sy = findSet(y)
+3.  Sx.tail.next = Sy.head
+4.  Sx.tail = Sy.tail
+5.  <span class="kw">for each</span> z em Sy <span class="kw">do</span>
+6.      z.rep = Sx</pre>
+<p>Exemplo: <code>union(a, d)</code> com S1 = {a, b, c} e S2 = {d, e, f, g}.</p>
+<div class="table-wrap"><table>
+<tr><th>Linha</th><th>O que faz</th><th>Estado depois</th></tr>
+<tr><td>1</td><td>Sx = findSet(a)</td><td>Sx = S1. Nada muda.</td></tr>
+<tr><td>2</td><td>Sy = findSet(d)</td><td>Sy = S2. Nada muda.</td></tr>
+<tr><td>3</td><td>c.next = d</td><td>a → b → c → d → e → f → g. As listas estão coladas.</td></tr>
+<tr><td>4</td><td>S1.tail = g</td><td>O tail de S1 está certo.</td></tr>
+<tr><td>5–6</td><td>d.rep = S1, e.rep = S1, f.rep = S1, g.rep = S1</td><td><b>4 atualizações.</b> Todos apontam para S1.</td></tr>
+</table></div>
+<p>As linhas 1 a 4 são O(1). O laço das linhas 5–6 roda uma vez por nó anexado.</p>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Custo do union = número de nós da lista anexada. No pior caso, quase todos os n elementos: <b>O(n)</b>.</p>
+</div>
 <div class="widget">
-  <div class="wtitle">union(x, y), passo a passo</div>
+  <div class="wtitle">union(x, y) animado</div>
   <div class="controls" id="uBtns"></div>
   <div class="controls">
     <label>conjuntos <input id="uIn" value="a,b,c|d,e,f,g" size="18"></label>
@@ -123,59 +149,55 @@ rv = findSet(v)        <span class="zero">▸ chamada 2</span>
     <span id="uErr" class="caption"></span>
   </div>
   <div id="unionPlayer"></div>
-  <p class="caption">Vermelho: nó com rep desatualizado. Verde: rep já corrigido. Seta laranja: o next recém-ligado. O contador "rep atualizados" é o custo que importa.</p>
+  <p class="caption">Vermelho: rep errado. Verde: rep corrigido. Seta laranja: o next que acabou de ser ligado. Na linha 3, os nós deslizam para a lista de x.</p>
 </div>
-<p><b>Custo:</b> as linhas de findSet e as que ligam as listas são $O(1)$. O laço <code>for each z em Sy</code> roda uma vez por elemento da lista anexada. No pior caso, essa lista tem quase todos os $n$ elementos (por exemplo, unir uma lista de 1 elemento com outra de $n-1$, anexando a grande à pequena).</p>
-<p class="result">union com listas ligadas: $O(n)$ no pior caso, onde $n$ é o número de elementos representados na estrutura</p>
 
-<h2 id="pond">5. União ponderada</h2>
-<p>A heurística do slide (<b>união ponderada</b>):</p>
-<ul>
-  <li>armazenar em cada conjunto o <b>número de elementos</b> (o campo size);</li>
-  <li>sempre <b>anexar a lista menor à maior</b>, porque assim são corrigidos menos ponteiros rep.</li>
-</ul>
-<p>Marque "união ponderada" na animação acima e rode <code>union(a, d)</code> outra vez. Sem a heurística são 4 atualizações, com ela são 3: o {a, b, c} é que vai para o fim do {d, e, f, g}.</p>
-<div class="box prof">
-  <span class="tag">O que o slide afirma</span>
-  <p>"Pior caso ainda tem a mesma complexidade. Mas na prática acaba sendo mais eficiente." Para ver o pior caso, una duas listas de $n/2$ elementos cada (botão "pior caso ponderado"). A menor tem $n/2$ elementos, então são $n/2$ atualizações, e isso é $O(n)$.</p>
+<h2 id="pond">6. União ponderada</h2>
+<p>Ideia: guardar o tamanho (<b>size</b>) de cada conjunto e sempre anexar a lista <b>menor</b> à maior.</p>
+<p>Mesmo exemplo, <code>union(a, d)</code>:</p>
+<div class="table-wrap"><table>
+<tr><th></th><th>Lista anexada</th><th class="num">rep atualizados</th></tr>
+<tr><td>sem heurística</td><td>S2 = {d, e, f, g} (a de y)</td><td class="num">4</td></tr>
+<tr><td>união ponderada</td><td>S1 = {a, b, c} (a menor)</td><td class="num">3</td></tr>
+</table></div>
+<p>E o pior caso? Duas listas de n/2 elementos. A menor ainda tem n/2 nós: n/2 atualizações.</p>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>A união ponderada é mais rápida na prática, mas o pior caso de um union continua <b>O(n)</b>.</p>
 </div>
 <details class="box extra">
-  <summary>Além do slide: por que "na prática" é melhor (Cormen 21.2). Opcional.</summary>
-  <p>Acompanhe um elemento $x$. Toda vez que o rep de $x$ é atualizado, $x$ estava na lista <b>menor</b>, então o conjunto de $x$ <b>pelo menos dobra</b> de tamanho. Um conjunto não passa de $n$ elementos, então isso acontece no máximo $\log_2 n$ vezes para cada $x$. Somando todos os elementos, uma sequência de $m$ operações custa $O(m + n \log n)$ no total, mesmo que uma única union possa custar $O(n)$. Esse argumento de "dobrar" volta na lição de union by rank.</p>
+  <summary>Além do slide (Cormen 21.2, opcional)</summary>
+  <p>Cada vez que o rep de um nó muda, ele estava na lista menor, então o seu conjunto pelo menos dobra. Isso só acontece log₂ n vezes por nó. Uma sequência de m operações custa O(m + n log n) no total.</p>
 </details>
 
-<h2 id="prova">6. Como escrever isso na prova</h2>
-<div class="box tip">
-  <span class="tag">Roteiro de resposta</span>
+<div class="box prof">
+  <span class="tag">Na prova, escreva</span>
   <ol>
-    <li><b>Representação:</b> desenhe as listas com o objeto conjunto (head, tail, size), os nós (valor, next, rep) e diga que o representante é o head. Cite o vetor ptr.</li>
-    <li><b>findSet:</b> acessa o nó por ptr e devolve rep, então $O(1)$.</li>
-    <li><b>union, passo a passo:</b> (1) acha Sx e Sy; (2) <code>Sx.tail.next = Sy.head</code>; (3) <code>Sx.tail = Sy.tail</code>; (4) percorre Sy atualizando o rep de cada nó.</li>
-    <li><b>Complexidade do union:</b> o passo (4) domina e custa $O(|S_y|)$, que é $O(n)$ no pior caso. Com a união ponderada, anexa-se a menor e há menos atualizações, mas o pior caso continua $O(n)$ (duas listas de $n/2$).</li>
+    <li>Desenhe as listas: objeto conjunto (head, tail), nós (valor, next, rep). Representante = head.</li>
+    <li>findSet: ptr[x] e depois rep. O(1).</li>
+    <li>union: cola as listas (O(1)) e corrige o rep de cada nó anexado: O(n) no pior caso.</li>
   </ol>
 </div>
 
-<h2 id="quiz">7. Quiz de recordação</h2>
-<p>Feche a animação e responda de memória.</p>
+<h2 id="quiz">7. Quiz</h2>
 <div id="quiz"></div>
 
-<h2 id="exercicio">8. Exercício (estilo prova)</h2>
+<h2 id="exercicio">8. Exercício</h2>
 <div class="exercise">
   <span class="tag">Exercício 11.1</span>
-  <p>Os conjuntos $\{p, q\}$ e $\{r, s, t\}$ estão representados por listas ligadas.</p>
+  <p>Conjuntos {p, q} e {r, s, t} representados por listas ligadas.</p>
   <ol type="a">
-    <li>Faça o diagrama da representação: objetos conjunto (head, tail, size), nós (valor, next, rep) e quem é o representante de cada conjunto.</li>
-    <li>Explique passo a passo <code>union(p, r)</code> <b>sem</b> heurística: como fica a lista final e quantos ponteiros rep são atualizados?</li>
-    <li>Repita com <b>união ponderada</b>. O que muda?</li>
-    <li>Dê uma sequência de operações em que, mesmo com união ponderada, uma única union custa $\Theta(n)$. Justifique.</li>
+    <li>Desenhe a representação.</li>
+    <li>Faça <code>union(p, r)</code> sem heurística, numa tabela como a da seção 5. Quantos rep mudam?</li>
+    <li>Repita com união ponderada.</li>
+    <li>Dê um exemplo em que uma única union custa n/2 mesmo com união ponderada.</li>
   </ol>
-  <p class="caption">Responda no chat (pode mandar foto do desenho). Só confira na animação depois de responder.</p>
+  <p class="caption">Responda no chat (pode mandar foto).</p>
 </div>
 
 <div class="box">
-  <span class="tag">Fonte principal</span>
-  <p>Slide da Aula 11, parte "Conjuntos Disjuntos", até a união ponderada (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Para aprofundar: Cormen, <i>Algoritmos</i>, 3ª ed., seções 21.1 e 21.2.</p>
-  <p>Ficou alguma dúvida? Pergunte no chat. Eu sou seu professor nesta matéria.</p>
+  <span class="tag">Fonte</span>
+  <p>Slide da Aula 11, parte "Conjuntos Disjuntos" até a união ponderada (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Cormen, 3ª ed., seções 21.1 e 21.2. Em pt-BR: <a href="https://users.ime.usp.br/~pf/analise_de_algoritmos/aulas/union-find.html">Feofiloff, "A estrutura union-find"</a>. Ficou alguma dúvida? Pergunte no chat.</p>
 </div>
 
 <div class="pager">
@@ -185,16 +207,16 @@ rv = findSet(v)        <span class="zero">▸ chamada 2</span>
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const BASE = [['a', 'b', 'c'], ['d', 'e', 'f', 'g']];
-  const st0 = ListSets.traceFind(BASE, 'a')[0].ls;
-  document.getElementById('static').append(ListSets.render(st0));
-
   const G = { pos: { A: [60, 40], C: [220, 40], B: [60, 180], D: [220, 180], E: [360, 110] },
     edges: [['A', 'B', 4], ['A', 'C', 1], ['B', 'C', 2], ['B', 'D', 5], ['C', 'D', 8], ['C', 'E', 6], ['D', 'E', 3]] };
+  document.getElementById('figG').append(GraphView.render(G, {}));
   StepPlayer.mount(document.getElementById('kPlayer'), { code: GraphView.KRUSKAL_CODE, stack: true, speed: 1100,
     steps: GraphView.traceKruskal(G), extra: (st, box) => box.append(GraphView.render(G, st.gs)) });
-  const extra = (st, box) => box.append(ListSets.render(st.ls));
-  StepPlayer.mount(document.getElementById('findPlayer'), { code: ListSets.FIND_CODE, stack: true, steps: ListSets.traceFind(BASE, 'f'), extra });
+
+  const BASE = [['a', 'b', 'c'], ['d', 'e', 'f', 'g']];
+  document.getElementById('static').append(ListSets.render(ListSets.traceFind(BASE, 'a')[0].ls));
+  StepPlayer.mount(document.getElementById('findPlayer'), { code: ListSets.FIND_CODE, stack: true, steps: ListSets.traceFind(BASE, 'f'),
+    extra: (st, box) => box.append(ListSets.render(st.ls)) });
 
   const root = document.getElementById('unionPlayer');
   const inp = { sets: document.getElementById('uIn'), x: document.getElementById('uX'), y: document.getElementById('uY'), pond: document.getElementById('uPond') };
@@ -205,10 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try { lists = ListSets.parse(inp.sets.value); } catch (e) { err.textContent = e.message; return; }
     const x = inp.x.value.trim(), y = inp.y.value.trim(), all = lists.flat();
     if (!all.includes(x) || !all.includes(y)) { err.textContent = 'x e y precisam estar em algum conjunto'; return; }
-    const pond = inp.pond.checked;
+    const pond = inp.pond.checked, lv = ListSets.view();
     root.replaceChildren(); root.className = '';
-    StepPlayer.mount(root, { code: pond ? ListSets.UNION_POND_CODE : ListSets.UNION_CODE, stack: true, speed: 900,
-      steps: ListSets.traceUnion(lists, x, y, pond), extra });
+    StepPlayer.mount(root, { code: pond ? ListSets.UNION_POND_CODE : ListSets.UNION_CODE, stack: true, speed: 1100,
+      steps: ListSets.traceUnion(lists, x, y, pond), extra: (st, box) => { lv.set(st.ls); box.append(lv.el); } });
   }
   const presets = [
     ['union(a, d)', 'a,b,c|d,e,f,g', 'a', 'd', false],
@@ -224,24 +246,24 @@ document.addEventListener('DOMContentLoaded', () => {
   run();
 
   Quiz.mount(document.getElementById('quiz'), [
-    { q: 'Com listas ligadas e o vetor ptr, quanto custa <code>findSet(x)</code> no pior caso?',
+    { q: 'Com listas ligadas e o vetor ptr, quanto custa <code>findSet(x)</code>?',
       options: ['$O(1)$', '$O(\\log n)$', '$O(n)$', '$O(n^2)$'], answer: 0,
-      explain: 'ptr[x] dá o nó de x direto, e o nó guarda rep. São dois passos constantes.' },
-    { q: 'Em <code>union(x, y)</code> sem heurística, quais ponteiros rep precisam mudar?',
-      options: ['um por elemento de x', 'um por elemento de y', 'só o head da lista', 'só o tail da lista'], answer: 1,
-      explain: 'A lista de y é anexada à de x, então cada nó vindo de y precisa apontar para o conjunto de x.' },
-    { q: 'A heurística de união ponderada sempre anexa…',
+      explain: 'ptr[x] dá o nó, e o nó guarda rep. Dois passos.' },
+    { q: 'Em <code>union(x, y)</code> sem heurística, quais rep mudam?',
+      options: ['um por elemento de y', 'um por elemento de x', 'só o head da lista', 'só o tail da lista'], answer: 0,
+      explain: 'A lista de y é anexada à de x. Cada nó de y passa a apontar para o conjunto de x.' },
+    { q: 'A união ponderada sempre anexa…',
       options: ['a lista menor na maior', 'a lista maior na menor', 'sempre y no fim de x', 'sempre x no fim de y'], answer: 0,
-      explain: 'Assim há menos ponteiros rep para corrigir. O campo size permite comparar em O(1).' },
-    { q: 'Com união ponderada, qual é o pior caso de uma única chamada de <code>union</code>?',
-      options: ['$O(1)$', '$O(\\log n)$', '$O(n)$', '$O(n^2)$'], answer: 2,
-      explain: 'Duas listas de n/2: a menor ainda tem n/2 nós para atualizar. O ganho aparece na prática (e no total de uma sequência de operações), não no pior caso de uma chamada.' },
-    { q: 'No Kruskal com $V$ vértices num grafo conexo, quantas vezes <code>union</code> é chamada?',
+      explain: 'Menos nós anexados, menos rep para corrigir.' },
+    { q: 'Com união ponderada, o pior caso de uma union é…',
+      options: ['$O(n)$', '$O(\\log n)$', '$O(1)$', '$O(n^2)$'], answer: 0,
+      explain: 'Duas listas de n/2: n/2 atualizações.' },
+    { q: 'No Kruskal, quantas vezes union é chamada?',
       options: ['$V - 1$', '$A$', '$2A$', '$V$'], answer: 0,
-      explain: 'Uma vez por aresta aceita, e a árvore geradora tem exatamente V − 1 arestas (o que você deduziu no diagnóstico).' },
-    { q: 'Sem acesso direto ao nó de $x$ (sem o vetor ptr), <code>findSet(x)</code> custaria…',
-      options: ['$O(1)$', '$O(\\log n)$', '$O(n)$', '$O(n^2)$'], answer: 2,
-      explain: 'Seria preciso procurar x percorrendo as listas, e são n elementos no total.' },
+      explain: 'Uma por aresta aceita. A árvore tem V − 1 arestas.' },
+    { q: 'No Kruskal, quantas vezes findSet é chamada?',
+      options: ['$2A$', '$A$', '$V - 1$', '$2V$'], answer: 0,
+      explain: 'Duas por aresta, inclusive nas descartadas.' },
   ]);
 });
 </script>
