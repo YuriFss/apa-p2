@@ -439,3 +439,63 @@ svg.tsplab line.del { stroke: var(--bad); stroke-width: 4; stroke-dasharray: 6 4
 svg.tsplab line.add { stroke: var(--aqua); stroke-width: 4; }
 svg.tsplab circle { fill: var(--ink-2); }
 svg.tsplab circle.in { fill: var(--accent); }
+
+/* PD (pd.js) — árvore de chamadas */
+:root { --roxo: #6250d6; --roxo-soft: rgba(98, 80, 214, .14); }
+.pdtbox { overflow-x: auto; }
+svg.pdt { width: 100%; height: auto; display: block; margin: 0 auto; overflow: visible; }
+svg.pdt .te { stroke: var(--ink-2); stroke-width: 1.6; }
+svg.pdt .te.ghost { stroke: var(--axis); stroke-dasharray: 3 4; opacity: .55; }
+svg.pdt .te.on { stroke: var(--accent); stroke-width: 3; }
+svg.pdt .te.new { stroke-dasharray: 1; stroke-dashoffset: 1; animation: tspdraw .45s ease-out forwards; }
+svg.pdt .el { font: 600 10.5px var(--sans); fill: var(--muted); paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
+svg.pdt .el.inc { fill: var(--good); }
+svg.pdt .el.ghost { opacity: .4; }
+svg.pdt .nd rect { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.6; transition: fill .3s, stroke .3s; }
+svg.pdt .nd .lb { font: 700 12.5px var(--mono); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+svg.pdt .nd .vb rect { fill: var(--good) !important; stroke: var(--bg) !important; stroke-width: 2 !important; stroke-dasharray: none !important; }
+svg.pdt .nd .vb.hit rect { fill: var(--aqua) !important; }
+svg.pdt .vb text { font: 700 11.5px var(--mono); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+svg.pdt .vb.new { animation: pdpop .4s ease-out; }
+svg.pdt .nd.ghost { opacity: .22; }
+svg.pdt .nd.c-roxo rect { fill: var(--roxo-soft); stroke: var(--roxo); }
+svg.pdt .nd.c-laranja rect { fill: var(--orange-soft); stroke: var(--orange); }
+svg.pdt .nd.c-vermelho rect { fill: var(--bad-soft); stroke: var(--bad); }
+svg.pdt .nd.c-azul rect { fill: var(--accent-soft); stroke: var(--accent); }
+svg.pdt .nd.c-verde rect { fill: var(--aqua-soft); stroke: var(--aqua); }
+svg.pdt .nd.on rect { stroke-width: 3; }
+svg.pdt .nd.cur rect { stroke: var(--ink); stroke-width: 3.5; }
+svg.pdt .nd.hit rect { stroke-dasharray: 5 3; stroke: var(--good); stroke-width: 2.5; }
+svg.pdt .nd.new { animation: pdpop .35s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes pdpop { from { opacity: 0; } to { opacity: 1; } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--ink-2); margin: 6px 0; }
+.legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 5px; border: 2px solid; }
+
+/* PD — tabela k[i][m] */
+table.pdk { width: auto; margin: 0 auto; font-variant-numeric: tabular-nums; }
+table.pdk th, table.pdk td { text-align: center; padding: 5px 9px; min-width: 30px; }
+table.pdk th.rh { text-align: left; font: 13px var(--mono); white-space: nowrap; }
+table.pdk th.hl { background: var(--accent-soft); }
+table.pdk th.in { background: var(--aqua-soft); color: var(--good); }
+table.pdk td { font: 600 15px var(--mono); transition: background .3s; }
+table.pdk td.empty { background: var(--surface-2); }
+table.pdk td.new { background: var(--aqua-soft); }
+table.pdk td.look { background: var(--bad-soft); outline: 2px solid var(--bad); outline-offset: -3px; }
+table.pdk td.from { background: var(--aqua-soft); outline: 2px solid var(--aqua); outline-offset: -3px; }
+table.pdk td.path { background: var(--orange-soft); }
+table.pdk td.cur { background: var(--accent-soft); outline: 3px solid var(--accent); outline-offset: -3px; }
+table.pdk td.cur.took { background: var(--aqua-soft); outline-color: var(--good); }
+table.pdk td.cur.out { outline-color: var(--muted); }
+table.pdk td.hit { background: var(--aqua-soft); outline: 2px dashed var(--good); outline-offset: -3px; }
+table.pdk.small td, table.pdk.small th { padding: 3px 7px; font-size: 13px; }
+.lab-in { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; }
+.lab-in label { font-size: 14px; color: var(--ink-2); }
+.lab-in input { font: 14px var(--mono); padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); width: 150px; }
+svg.pdt .nd.cut { opacity: .28; }
+svg.pdt .nd.cut rect { stroke-dasharray: 3 3; }
+svg.pdt .te.cut { opacity: .3; stroke-dasharray: 3 3; }
+.arr .cell.new { border-color: var(--aqua); background: var(--aqua-soft); animation: pdpop .4s ease-out; }
+.arr .cell.hit { border: 2px dashed var(--good); background: var(--aqua-soft); }
+.items { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.items .item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 96px; padding: 10px 14px; border: 1.5px solid var(--axis); border-radius: 10px; background: var(--surface); font-size: 15px; }
+.items .item b { color: var(--accent); }

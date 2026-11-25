@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 13.2 · Mochila 0-1: recorrência e top-down</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/pd.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 13 · Programação Dinâmica</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 13 · Lição 2</p>
+<h1>Mochila 0-1: a recorrência e a versão top-down</h1>
+<p class="lead">Um ladrão tem uma mochila que aguenta um certo peso. Cada objeto tem um peso e um valor. O que levar para ganhar o máximo? Nesta lição: o problema, por que o guloso falha, a recorrência "o item entra ou não entra", a árvore de força bruta e a versão com memo.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#problema">O problema, com um exemplo</a></li>
+    <li><a href="#guloso">O guloso não resolve</a></li>
+    <li><a href="#ideia">A ideia: o último item entra ou não?</a></li>
+    <li><a href="#rec">A recorrência f(k, w)</a></li>
+    <li><a href="#arvore">A árvore da força bruta</a></li>
+    <li><a href="#topdown">Top-down: a mesma recursão com memo</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="problema">1. O problema, com um exemplo</h2>
+<p>Mochila com capacidade <b>M = 5</b>. Três itens:</p>
+<div class="items">
+  <div class="item"><b>item 1</b><span>peso 2</span><span>valor 3</span></div>
+  <div class="item"><b>item 2</b><span>peso 3</span><span>valor 4</span></div>
+  <div class="item"><b>item 3</b><span>peso 4</span><span>valor 5</span></div>
+</div>
+<p>Cada item entra inteiro ou fica de fora. Por isso "0-1": 0 = não leva, 1 = leva. Com 3 itens, há $2^3 = 8$ escolhas:</p>
+<div class="table-wrap"><table>
+<tr><th>Itens levados</th><th>Peso total</th><th>Cabe em 5?</th><th>Valor</th></tr>
+<tr><td>nenhum</td><td class="num">0</td><td>sim</td><td class="num">0</td></tr>
+<tr><td>{1}</td><td class="num">2</td><td>sim</td><td class="num">3</td></tr>
+<tr><td>{2}</td><td class="num">3</td><td>sim</td><td class="num">4</td></tr>
+<tr><td>{3}</td><td class="num">4</td><td>sim</td><td class="num">5</td></tr>
+<tr style="background:var(--aqua-soft)"><td><b>{1, 2}</b></td><td class="num">5</td><td>sim</td><td class="num"><b>7</b></td></tr>
+<tr><td>{1, 3}</td><td class="num">6</td><td>não</td><td class="num">–</td></tr>
+<tr><td>{2, 3}</td><td class="num">7</td><td>não</td><td class="num">–</td></tr>
+<tr><td>{1, 2, 3}</td><td class="num">9</td><td>não</td><td class="num">–</td></tr>
+</table></div>
+<p>Melhor: levar os itens 1 e 2, valor <b>7</b>.</p>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <ul>
+    <li><b>Entrada:</b> n itens; o item i tem peso $p_i$ e valor $v_i$; a mochila tem capacidade M.</li>
+    <li><b>Saída:</b> um subconjunto de itens com peso total $\le M$ e o <b>maior valor total</b> possível.</li>
+    <li><b>0-1:</b> cada item é levado inteiro ou não é levado.</li>
+  </ul>
+</div>
+<p>Testar todos os subconjuntos é a força bruta: $2^n$ subconjuntos. Com 40 itens já são mais de um trilhão.</p>
+
+<h2 id="guloso">2. O guloso não resolve</h2>
+<p>Uma ideia gulosa: pegar primeiro o item com maior valor por quilo (v/p). Veja com M = 4:</p>
+<div class="items">
+  <div class="item"><b>item 1</b><span>peso 3</span><span>valor 7</span><span class="caption">v/p = 2,33</span></div>
+  <div class="item"><b>item 2</b><span>peso 2</span><span>valor 4</span><span class="caption">v/p = 2</span></div>
+  <div class="item"><b>item 3</b><span>peso 2</span><span>valor 4</span><span class="caption">v/p = 2</span></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Estratégia</th><th>Leva</th><th>Valor</th></tr>
+<tr><td>guloso por v/p</td><td>item 1 (peso 3). Sobra 1: nada mais cabe.</td><td class="num">7</td></tr>
+<tr><td>guloso por maior valor</td><td>item 1. Sobra 1: nada mais cabe.</td><td class="num">7</td></tr>
+<tr style="background:var(--aqua-soft)"><td><b>ótimo</b></td><td>itens 2 e 3 (peso 4)</td><td class="num"><b>8</b></td></tr>
+</table></div>
+<p>O guloso pega o item 1 e desperdiça capacidade. Ele nunca volta atrás. Precisamos de algo que considere as duas possibilidades para cada item. É isso que a PD faz, sem pagar $2^n$.</p>
+
+<h2 id="ideia">3. A ideia: o último item entra ou não?</h2>
+<p>Volte ao exemplo da seção 1 (M = 5). Olhe só o <b>item 3</b> (peso 4, valor 5). Ou ele entra, ou não entra:</p>
+<div class="table-wrap"><table>
+<tr><th>Caso</th><th>O que sobra para resolver</th><th>Melhor valor desse resto</th><th>Total</th></tr>
+<tr><td><b>item 3 fica de fora</b></td><td>itens {1, 2}, capacidade 5</td><td class="num">7 (leva 1 e 2)</td><td class="num"><b>7</b></td></tr>
+<tr><td><b>item 3 entra</b></td><td>ganha 5; itens {1, 2}, capacidade 5 − 4 = 1</td><td class="num">0 (nada pesa 1)</td><td class="num">5 + 0 = 5</td></tr>
+</table></div>
+<p>Resposta: max(7, 5) = 7. Repare: nos dois casos sobrou <b>o mesmo tipo de problema, só que menor</b>: menos itens e, talvez, menos capacidade. E esse problema menor se resolve do mesmo jeito, olhando o item 2. Isso é recursão.</p>
+<div id="figDecisao"></div>
+
+<h2 id="rec">4. A recorrência f(k, w)</h2>
+<p>Damos um nome ao problema menor:</p>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <p>$f(k, w)$ = o maior valor que dá para obter usando <b>só os itens 1, 2, …, k</b> numa mochila de capacidade <b>w</b>.</p>
+  <p>A resposta do problema é $f(n, M)$.</p>
+</div>
+<p>Exemplos com os itens da seção 1: $f(2, 5) = 7$ (itens 1 e 2 cabem juntos). $f(2, 1) = 0$ (nada pesa 1). $f(1, 3) = 3$ (só o item 1).</p>
+<p>A seção 3, escrita com f:</p>
+$$f(k, w) = \begin{cases}
+0 & \text{se } k = 0 \text{ ou } w = 0 \\[4pt]
+f(k-1,\ w) & \text{se } p_k > w \quad \text{(item k não cabe)} \\[4pt]
+\max\big(\ f(k-1,\ w),\ \ f(k-1,\ w - p_k) + v_k\ \big) & \text{se } p_k \le w
+\end{cases}$$
+<div class="table-wrap"><table>
+<tr><th>Linha</th><th>Em português</th></tr>
+<tr><td>$0$</td><td>sem itens ou sem espaço, não se leva nada</td></tr>
+<tr><td>$f(k-1, w)$</td><td>o item k não cabe: o melhor é o mesmo de antes, sem ele</td></tr>
+<tr><td>$\max(\ldots)$</td><td>a melhor entre <b>excluir</b> o item k (mesma capacidade) e <b>incluir</b> (ganha $v_k$, perde $p_k$ de capacidade)</td></tr>
+</table></div>
+<p>Esta é exatamente a recorrência da Prova 3 do Prof. Bruno, só que lá ela é escrita com p[k] e v[k].</p>
+<div class="box">
+  <span class="tag">Subestrutura ótima</span>
+  <p>Se o item k está numa solução ótima de $f(k, w)$, o resto dela tem que ser uma solução ótima de $f(k-1, w - p_k)$. Se não fosse, trocaríamos o resto por um melhor e a solução toda melhoraria. Isso é contradição. Então a resposta ótima é montada com respostas ótimas menores.</p>
+</div>
+<div class="box warn">
+  <span class="tag">Cuidado com o índice no código</span>
+  <p>No código, os vetores começam em 0: o item k está em <code>p[k−1]</code> e <code>v[k−1]</code>. Por isso o slide escreve <code>p[n−1]</code>. Na fórmula, o item k é $p_k$.</p>
+</div>
+
+<h2 id="arvore">5. A árvore da força bruta</h2>
+<p>O exemplo do slide: M = 2, n = 3, todos os pesos 1, valores v = [10, 20, 30]. Cada chamada $f(k, w)$ abre dois ramos: <b>inclui</b> o item k (à esquerda) e <b>exclui</b> (à direita).</p>
+<div id="figTree"></div>
+<div class="legend" id="legT"></div>
+<p>Caixas da mesma cor são o <b>mesmo subproblema</b>: $f(1, 1)$ aparece 2 vezes, $f(0, 1)$ aparece 3 vezes e $f(0, 0)$, 2 vezes. É a superposição de subproblemas: a mochila pode usar PD.</p>
+<p>O código da força bruta é a recorrência, linha por linha:</p>
+<div id="pBrute"></div>
+<p>Cada chamada abre até 2 chamadas, e a árvore tem até n níveis. Então são até $2^{n+1} - 1$ chamadas: força bruta <b>exponencial</b>, $O(2^n)$.</p>
+
+<h2 id="topdown">6. Top-down: a mesma recursão com memo</h2>
+<p>Igual ao Fibonacci: uma tabela <code>memo</code> guarda a resposta de cada $f(k, w)$. Agora o subproblema tem <b>dois números</b>, k e w. Então a tabela é uma <b>matriz</b> com $(n + 1)$ linhas e $(M + 1)$ colunas. O valor −1 quer dizer "ainda não calculado".</p>
+<pre class="code"><span class="fn">init(n, M)</span>
+memo = nova matriz (n + 1) × (M + 1), toda com −1
+<span class="kw">for</span> i = 0 <span class="kw">to</span> n:  memo[i][0] = 0    <span class="caption">▸ capacidade 0 vale 0</span>
+<span class="kw">for</span> w = 0 <span class="kw">to</span> M:  memo[0][w] = 0    <span class="caption">▸ zero itens vale 0</span></pre>
+<p>Na animação, a matriz memo aparece embaixo da árvore. Quando a segunda chamada de $f(1, 1)$ chega, ela só lê memo[1][1]:</p>
+<div id="pMemo"></div>
+<p>Foram 11 chamadas em vez de 13. Num exemplo tão pequeno, a diferença é pouca. Com mais itens, ela explode:</p>
+<div class="table-wrap"><table id="tCalls">
+<tr><th>Instância</th><th>Força bruta (chamadas)</th><th>Top-down com memo (chamadas)</th></tr>
+</table></div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Existem no máximo $(n + 1)(M + 1)$ subproblemas $f(k, w)$ diferentes. Com memo, cada um é calculado <b>uma vez</b>, em $O(1)$ fora as chamadas. Total: $O(n \cdot M)$.</p>
+</div>
+<p>Na próxima lição, transformamos isso em bottom-up: um laço duplo que preenche a matriz linha por linha, sem recursão. É a forma que cai na prova.</p>
+
+<h2 id="quiz">7. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">8. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 13.2</span>
+  <p>M = 4, pesos p = [1, 2, 3], valores v = [2, 3, 4].</p>
+  <ol type="a">
+    <li>Liste os 8 subconjuntos, o peso e o valor de cada um. Qual o ótimo?</li>
+    <li>Desenhe a árvore de chamadas da força bruta para $f(3, 4)$, com os ramos "inclui" e "exclui". Marque os subproblemas repetidos.</li>
+    <li>Quantas chamadas a versão com memo faria? Quais chamadas desaparecem?</li>
+    <li>Qual o tamanho da matriz memo? O que significa memo[2][3]? Qual o valor dele?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "Programação Dinâmica (Parte 1)", Profs. Bruno Bruck e Teobaldo Bulhões: Mochila Inteira 0-1 (subestrutura ótima, superposição, árvore de f(3, 2), força bruta e top-down). Recorrência no formato da Prova 3 do Prof. Bruno.</p>
+</div>
+
+<div class="pager">
+  <a href="0011-pd-fibonacci.html"><small>← anterior</small>13.1 O que é PD: Fibonacci</a>
+  <a class="next" href="0013-pd-mochila-bottom-up.html"><small>próxima →</small>13.3 Mochila bottom-up</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const put = (id, node) => document.getElementById(id).append(node);
+  const p = [1, 1, 1], v = [10, 20, 30], n = 3, M = 2;
+
+  // diagrama de decisão do exemplo da seção 3 (só o primeiro nível)
+  const dec = { id: 0, label: 'f(3,5)', key: 'r', children: [
+    { id: 1, label: 'f(2,1)', key: 'a', edge: 'inclui i3: +5', children: [] },
+    { id: 2, label: 'f(2,5)', key: 'b', edge: 'exclui i3', children: [] }] };
+  dec.value = 7; dec.children[0].value = 0; dec.children[1].value = 7;
+  put('figDecisao', PD.drawTree(dec, { all: true }, { dx: 200, nw: 64, dy: 80 }));
+
+  const full = PD.knapTree(n, M, p, v, false);
+  const colors = PD.colorsFor(full, 'knap');
+  put('figTree', PD.drawTree(full, { all: true }, { colors, dx: 84, nw: 58, dy: 78 }));
+  const legEl = document.getElementById('legT');
+  const cssc = { roxo: 'var(--roxo)', laranja: 'var(--orange)', azul: 'var(--accent)', vermelho: 'var(--bad)', verde: 'var(--aqua)' };
+  Object.entries(colors).forEach(([k, c]) => legEl.append(APA.el('span', { html: `<span class="sw" style="border-color:${cssc[c]}"></span>f(${k})` })));
+
+  const ctx = { n, M, p, v };
+  StepPlayer.mount(document.getElementById('pBrute'), { code: PD.CODES.knap, steps: PD.treeSteps(full, 'knap', ctx), extra: PD.treeExtra(full, { colors, dx: 84, nw: 58, dy: 78 }), stack: true, speed: 1000 });
+  const mt = PD.knapTree(n, M, p, v, true);
+  StepPlayer.mount(document.getElementById('pMemo'), { code: PD.CODES.knapmemo, steps: PD.treeSteps(mt, 'knapmemo', ctx), extra: PD.treeExtra(mt, { colors, dx: 84, nw: 58, dy: 78 }), stack: true, speed: 1000 });
+
+  const count = (r) => PD.nodes(r).length;
+  const tc = document.getElementById('tCalls');
+  [['slide: M = 2, 3 itens de peso 1', [1, 1, 1], [10, 20, 30], 2],
+   ['próxima lição: M = 7, p = [1, 3, 4, 5]', [1, 3, 4, 5], [1, 4, 5, 7], 7],
+   ['10 itens de peso 1, M = 5', Array(10).fill(1), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 5],
+   ['16 itens de peso 1, M = 8', Array(16).fill(1), Array.from({ length: 16 }, (_, i) => i + 1), 8]].forEach(([lab, pp, vv, MM]) => {
+    const b = count(PD.knapTree(pp.length, MM, pp, vv, false)), m = count(PD.knapTree(pp.length, MM, pp, vv, true));
+    tc.append(APA.el('tr', {}, APA.el('td', {}, lab), APA.el('td', { class: 'num' }, b.toLocaleString('pt-BR')), APA.el('td', { class: 'num' }, m.toLocaleString('pt-BR'))));
+  });
+
+  Quiz.mount(document.getElementById('quizBox'), [
+    { q: 'O que significa $f(2, 5)$?', options: ['O maior valor usando só os itens 1 e 2 com capacidade 5', 'O valor do item 2 com peso 5', 'O maior valor usando 2 itens quaisquer', 'A capacidade que sobra depois do item 2'], answer: 0,
+      explain: 'k diz até qual item podemos usar; w é a capacidade disponível.' },
+    { q: 'Se o item k pesa mais que w, então $f(k, w) =$', options: ['$f(k-1, w)$', '$f(k-1, w - p_k) + v_k$', '$0$', '$v_k$'], answer: 0,
+      explain: 'Ele não cabe, então só resta excluí-lo.' },
+    { q: 'No ramo "inclui o item k", a capacidade passa a ser…', options: ['$w - p_k$', '$w$', '$w - v_k$', '$w - 1$'], answer: 0,
+      explain: 'O item ocupa $p_k$ da mochila; em troca, somamos $v_k$ ao valor.' },
+    { q: 'Por que a matriz memo tem dimensão $(n+1) \\times (M+1)$?', options: ['k vai de 0 a n e w vai de 0 a M', 'Porque há n + 1 itens', 'Para guardar pesos e valores', 'Por segurança'], answer: 0,
+      explain: 'Cada par (k, w) é um subproblema. Incluímos k = 0 e w = 0, os casos base.' },
+    { q: 'Complexidade do top-down com memo:', options: ['$O(n \\cdot M)$', '$O(2^n)$', '$O(n^2)$', '$O(n \\log n)$'], answer: 0,
+      explain: 'No máximo $(n+1)(M+1)$ subproblemas, cada um resolvido uma vez em $O(1)$.' },
+  ]);
+});
+</script>
+</body>
+</html>

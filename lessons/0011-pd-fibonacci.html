@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 13.1 · Programação dinâmica com Fibonacci</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/chart.js"></script>
+<script defer src="../assets/pd.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 13 · Programação Dinâmica</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 13 · Lição 1</p>
+<h1>O que é programação dinâmica: Fibonacci</h1>
+<p class="lead">Programação dinâmica (PD) é uma ideia simples: <b>se você já calculou algo, anote e não calcule de novo</b>. Nesta lição vemos essa ideia no exemplo mais simples possível, a sequência de Fibonacci. Na próxima, usamos a mesma ideia no problema da mochila.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#fib">A sequência de Fibonacci</a></li>
+    <li><a href="#mao">Calculando fib(5) à mão, de forma recursiva</a></li>
+    <li><a href="#rec">O algoritmo recursivo, animado</a></li>
+    <li><a href="#quantas">Quantas chamadas? Muitas.</a></li>
+    <li><a href="#memo">A ideia da PD: anotar (top-down)</a></li>
+    <li><a href="#bu">Sem recursão: de baixo para cima (bottom-up)</a></li>
+    <li><a href="#def">Definição de PD e as duas propriedades</a></li>
+    <li><a href="#dc">PD × divisão e conquista</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="fib">1. A sequência de Fibonacci</h2>
+<p>Os dois primeiros números são 1. Cada número seguinte é a soma dos dois anteriores:</p>
+<div class="table-wrap"><table style="width:auto">
+<tr><th>n</th><td class="num">1</td><td class="num">2</td><td class="num">3</td><td class="num">4</td><td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">8</td><td class="num">9</td></tr>
+<tr><th>fib(n)</th><td class="num">1</td><td class="num">1</td><td class="num">2</td><td class="num">3</td><td class="num">5</td><td class="num">8</td><td class="num">13</td><td class="num">21</td><td class="num">34</td></tr>
+<tr><th>conta</th><td>–</td><td>–</td><td>1 + 1</td><td>1 + 2</td><td>2 + 3</td><td>3 + 5</td><td>5 + 8</td><td>8 + 13</td><td>13 + 21</td></tr>
+</table></div>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <p>$fib(1) = fib(2) = 1$ (caso base) e $fib(n) = fib(n-1) + fib(n-2)$ para $n \ge 3$.</p>
+</div>
+<p>Repare como você preencheu a tabela: da esquerda para a direita, usando os dois valores que já estavam escritos. Guarde isso. É a solução de PD que veremos na seção 6.</p>
+
+<h2 id="mao">2. Calculando fib(5) à mão, de forma recursiva</h2>
+<p>Agora vamos seguir a definição ao pé da letra, como um programa recursivo faria. Para saber fib(5), precisamos de fib(4) e fib(3). Para fib(4), precisamos de fib(3) e fib(2). E assim por diante:</p>
+<div class="table-wrap"><table>
+<tr><th>Para calcular…</th><th>chama…</th></tr>
+<tr><td>fib(5)</td><td>fib(4) e fib(3)</td></tr>
+<tr><td>fib(4)</td><td>fib(3) e fib(2)</td></tr>
+<tr><td>fib(3)</td><td>fib(2) e fib(1) <span class="caption">(fib(3) aparece aqui…)</span></td></tr>
+<tr><td>fib(3)</td><td>fib(2) e fib(1) <span class="caption">(…e de novo aqui, chamado por fib(5))</span></td></tr>
+</table></div>
+<p>Desenhando todas as chamadas, temos uma árvore. Cada caixa é uma chamada. A cor indica o argumento: caixas da mesma cor fazem <b>exatamente a mesma conta</b>.</p>
+<div id="figFib5"></div>
+<div class="legend" id="leg5"></div>
+<div class="table-wrap"><table style="width:auto">
+<tr><th>Chamada</th><td>fib(5)</td><td>fib(4)</td><td>fib(3)</td><td>fib(2)</td><td>fib(1)</td><th>Total</th></tr>
+<tr><th>Quantas vezes</th><td class="num">1</td><td class="num">1</td><td class="num"><b>2</b></td><td class="num"><b>3</b></td><td class="num"><b>2</b></td><td class="num"><b>9</b></td></tr>
+</table></div>
+<p>fib(3) é calculado <b>duas vezes</b>. fib(2), <b>três vezes</b>. É trabalho repetido. Esse é o problema que a PD resolve.</p>
+
+<h2 id="rec">3. O algoritmo recursivo, animado</h2>
+<p>O código é a definição, linha por linha. A animação calcula fib(6). Acompanhe:</p>
+<ul>
+  <li>A caixa com borda preta grossa é a chamada que está rodando agora.</li>
+  <li>As caixas com borda grossa e a linha azul até ela formam a <b>pilha de chamadas</b>: quem está esperando a resposta.</li>
+  <li>O selo verde no canto de uma caixa é o valor que ela devolveu.</li>
+  <li>As caixas apagadas são chamadas que ainda vão acontecer.</li>
+</ul>
+<div id="pRec"></div>
+
+<h2 id="quantas">4. Quantas chamadas? Muitas.</h2>
+<p>Contando as chamadas do algoritmo recursivo:</p>
+<div class="table-wrap"><table style="width:auto">
+<tr><th>n</th><td class="num">5</td><td class="num">6</td><td class="num">7</td><td class="num">10</td><td class="num">20</td><td class="num">30</td><td class="num">40</td></tr>
+<tr><th>chamadas</th><td class="num">9</td><td class="num">15</td><td class="num">25</td><td class="num">109</td><td class="num">13 529</td><td class="num">1 664 079</td><td class="num">204 668 309</td></tr>
+</table></div>
+<p>Cada vez que n aumenta 1, o número de chamadas fica cerca de <b>1,6 vezes maior</b>. Isso é crescimento <b>exponencial</b>. Em notação O, é limitado por $O(2^n)$.</p>
+<p>Por quê? Cada chamada (fora do caso base) faz duas chamadas. A árvore dobra de largura a cada nível. E quase tudo nela é repetido: fib(40) chama fib(2) mais de 60 milhões de vezes.</p>
+
+<h2 id="memo">5. A ideia da PD: anotar (top-down)</h2>
+<p>Solução: um vetor <code>memo</code>. Antes de calcular fib(k), olhe se memo[k] já tem a resposta. Se tem, devolva. Se não tem, calcule <b>uma vez</b> e anote.</p>
+<pre class="code"><span class="fn">init(n)</span>
+<span class="kw">for</span> i = 1 <span class="kw">to</span> n:  memo[i] ← NULL      <span class="caption">▸ NULL = "ainda não sei"</span>
+memo[1] ← 1;  memo[2] ← 1           <span class="caption">▸ os casos base já entram anotados</span>
+
+<span class="fn">fib(n)</span>
+1. <span class="kw">if</span> memo[n] == NULL:                <span class="caption">▸ ainda não calculei?</span>
+2.     memo[n] ← fib(n − 1) + fib(n − 2)  <span class="caption">▸ calcula uma vez e anota</span>
+3. <span class="kw">return</span> memo[n]                    <span class="caption">▸ devolve o que está anotado</span></pre>
+<p>Antes da animação, compare as duas árvores de fib(7). Em cima, sem memo: 25 chamadas. Embaixo, a mesma árvore com memo: a caixa tracejada verde só consulta o memo, e as caixas apagadas abaixo dela <b>nunca acontecem</b>.</p>
+<div id="figCut"></div>
+<p class="caption">fib(7) com memo: 25 − 14 = <b>11 chamadas</b>. As 14 apagadas foram economizadas.</p>
+<p>Agora a execução com memo, passo a passo. No vetor, <b>?</b> quer dizer NULL (ainda não calculado). Repare no vetor enchendo, da esquerda para a direita:</p>
+<div id="pMemo"></div>
+<p>Essa forma se chama <b>top-down</b> (de cima para baixo): começa no problema grande, fib(7), e desce pela recursão até os casos base, anotando no caminho. Outro nome comum é <b>memorização</b> (ou <i>memoization</i>).</p>
+<p>Quantas chamadas faz? Cada fib(k), de 3 a n, é calculado uma vez e faz 2 chamadas. Total: $2n - 3$ chamadas. É $O(n)$. De exponencial para linear, só por anotar.</p>
+<div id="chart"></div>
+<p class="caption">Chamadas em escala logarítmica. A linha da recursão simples sobe reta, ou seja, exponencial. A da memo quase não sai do chão.</p>
+
+<h2 id="bu">6. Sem recursão: de baixo para cima (bottom-up)</h2>
+<p>Olhe o vetor memo no fim da animação: [1, 1, 2, 3, 5, 8, 13]. Ele foi preenchido da esquerda para a direita. Então nem precisamos de recursão. Basta um <code>for</code> que preenche o vetor nessa ordem, como você fez na tabela da seção 1:</p>
+<div id="pBU"></div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p><b>Bottom-up</b> (de baixo para cima): parte dos casos base e vai até o problema pedido, preenchendo uma tabela com um laço. Sem recursão. Para fib: $n - 2$ iterações, cada uma $O(1)$. Total $O(n)$ de tempo e $O(n)$ de memória.</p>
+</div>
+<p>O slide diz: em geral queremos a versão bottom-up (sem recursão, sem pilha). Mas costuma ser mais fácil <b>pensar primeiro de forma recursiva</b> (top-down) e depois transformar em bottom-up. É o roteiro que seguiremos na mochila.</p>
+<div class="table-wrap"><table>
+<tr><th>Versão</th><th>Como funciona</th><th>Tempo</th><th>Memória extra</th></tr>
+<tr><td>Recursiva simples</td><td>segue a definição; recalcula tudo</td><td>exponencial, $O(2^n)$</td><td>pilha $O(n)$</td></tr>
+<tr><td>Top-down (memo)</td><td>recursiva, mas anota cada resposta</td><td>$O(n)$</td><td>memo $O(n)$ + pilha $O(n)$</td></tr>
+<tr><td>Bottom-up</td><td>laço dos casos base até n</td><td>$O(n)$</td><td>memo $O(n)$</td></tr>
+</table></div>
+
+<h2 id="def">7. Definição de PD e as duas propriedades</h2>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <p><b>Programação dinâmica</b> é um paradigma de construção de algoritmos. Divide o problema em subproblemas, como divisão e conquista, mas <b>guarda a resposta de cada subproblema</b> numa tabela para nunca resolvê-lo duas vezes. Usa mais <b>memória</b> para economizar <b>tempo</b>.</p>
+</div>
+<p>Para usar PD, o problema precisa ter duas propriedades. Veja cada uma no Fibonacci:</p>
+<div class="table-wrap"><table>
+<tr><th>Propriedade</th><th>O que significa</th><th>No Fibonacci</th></tr>
+<tr><td><b>Subestrutura ótima</b></td><td>a solução do problema é montada a partir das soluções dos subproblemas</td><td>fib(n) sai de fib(n − 1) e fib(n − 2). (Fibonacci não é de otimização, mas a ideia é a mesma: a resposta vem das respostas menores.)</td></tr>
+<tr><td><b>Superposição de subproblemas</b></td><td>o mesmo subproblema aparece várias vezes</td><td>fib(3) aparece 2 vezes em fib(5); fib(2) aparece 3 vezes</td></tr>
+</table></div>
+<p>Sem a superposição, anotar não adianta nada: cada subproblema apareceria uma vez só. Quanto mais repetição, maior o ganho da PD.</p>
+<div class="box">
+  <span class="tag">Detalhe do slide</span>
+  <p>A tabela de anotações deve ter acesso em tempo constante. Use um <b>vetor</b> (ou matriz), indexado pelo subproblema, e não uma lista que precise ser percorrida.</p>
+</div>
+<p>Curiosidade: o nome "programação dinâmica" é de Richard Bellman, nos anos 1950. "Programação" quer dizer planejamento, como em "programação da TV", e não código. Ele escolheu "dinâmica" porque soava bem e ninguém conseguiria criticar o nome.</p>
+
+<h2 id="dc">8. PD × divisão e conquista</h2>
+<div class="figrow">
+  <div><div id="figMS"></div><p class="caption"><b>MergeSort</b> (divisão e conquista): os subproblemas são metades diferentes do vetor. Nenhum se repete.</p></div>
+  <div><div id="figF"></div><p class="caption"><b>Fibonacci</b>: o mesmo subproblema aparece várias vezes (mesma cor).</p></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th></th><th>Divisão e conquista</th><th>Programação dinâmica</th></tr>
+<tr><td>Divide em subproblemas?</td><td>sim</td><td>sim</td></tr>
+<tr><td>Subestrutura ótima?</td><td>pode ter</td><td>sim</td></tr>
+<tr><td>Subproblemas se repetem?</td><td><b>não</b> (são independentes)</td><td><b>sim</b> (superposição)</td></tr>
+<tr><td>Guarda respostas?</td><td>não precisa</td><td>sim, numa tabela</td></tr>
+</table></div>
+<p>O slide pergunta: "subestrutura ótima pode estar em problemas de divisão e conquista?" Sim. O que separa os dois paradigmas é a <b>superposição</b>.</p>
+
+<h2 id="quiz">9. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">10. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 13.1</span>
+  <ol type="a">
+    <li>Desenhe a árvore de chamadas da versão recursiva simples para fib(6). Quantas vezes fib(3) é chamado? E fib(2)? Quantas chamadas no total?</li>
+    <li>Com a versão memo, quantas chamadas faz fib(10)? Use a fórmula $2n - 3$ e explique de onde ela vem.</li>
+    <li>Escreva o pseudocódigo bottom-up para a sequência "tribonacci": $t(1) = t(2) = t(3) = 1$ e $t(n) = t(n-1) + t(n-2) + t(n-3)$. Qual a complexidade?</li>
+    <li>Explique com suas palavras: por que a PD não ajuda no MergeSort?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "Programação Dinâmica (Parte 1)", Profs. Bruno Bruck e Teobaldo Bulhões: introdução e sequência de Fibonacci.</p>
+</div>
+
+<div class="pager">
+  <a href="../index.html"><small>← índice</small>APA · Prova 2</a>
+  <a class="next" href="0012-pd-mochila-recorrencia.html"><small>próxima →</small>13.2 Mochila: recorrência e top-down</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const put = (id, node) => document.getElementById(id).append(node);
+  const col = { 5: 'verde', 4: 'roxo', 3: 'laranja', 2: 'vermelho', 1: 'azul' };
+  const leg = (id, keys) => { const el = document.getElementById(id); keys.forEach((k) => { const c = { verde: 'var(--aqua)', roxo: 'var(--roxo)', laranja: 'var(--orange)', vermelho: 'var(--bad)', azul: 'var(--accent)' }[col[k]]; el.append(APA.el('span', { html: `<span class="sw" style="border-color:${c}"></span>fib(${k})` })); }); };
+
+  put('figFib5', PD.drawTree(PD.fibTree(5, false), { all: true }, { colors: col }));
+  leg('leg5', [4, 3, 2, 1]);
+
+  const t6 = PD.fibTree(6, false);
+  StepPlayer.mount(document.getElementById('pRec'), { code: PD.CODES.fib, steps: PD.treeSteps(t6, 'fib'), extra: PD.treeExtra(t6, { colors: col }), stack: true, speed: 900 });
+
+  // fib(7): sem memo × com memo (o que é cortado)
+  const full = PD.fibTree(7, false), cut = PD.fibTree(7, false); PD.markCut(cut);
+  const wrap = APA.el('div');
+  const a = APA.el('div'), b = APA.el('div');
+  a.append(PD.drawTree(full, { all: true }, { colors: col, dx: 62, nw: 52 }), APA.el('p', { class: 'caption' }, 'Sem memo: 25 chamadas.'));
+  b.append(PD.drawTree(cut, { all: true }, { colors: col, dx: 62, nw: 52 }), APA.el('p', { class: 'caption' }, 'Com memo: 11 chamadas. As caixas apagadas são as que a memo evita.'));
+  wrap.append(a, b); put('figCut', wrap);
+
+  const m7 = PD.fibTree(7, true);
+  StepPlayer.mount(document.getElementById('pMemo'), { code: PD.CODES.fibmemo, steps: PD.treeSteps(m7, 'fibmemo', { n: 7 }), extra: PD.treeExtra(m7, { colors: col }), stack: true, speed: 1000 });
+
+  // bottom-up
+  const BU = ['fib(n)', 'memo[1] ← 1', 'memo[2] ← 1', 'for i = 3 to n', '    memo[i] ← memo[i−1] + memo[i−2]', 'return memo[n]'];
+  const n = 7, memo = Array(n).fill(null), steps = [];
+  const arr = (marks, ptrs) => [{ name: 'memo', base: 1, values: memo.map((x) => (x == null ? '' : x)), marks, ptrs }];
+  memo[0] = 1; steps.push({ line: 1, arrays: arr({ 0: 'new' }), note: 'Caso base: memo[1] = 1.' });
+  memo[1] = 1; steps.push({ line: 2, arrays: arr({ 1: 'new' }), note: 'Caso base: memo[2] = 1.' });
+  for (let i = 3; i <= n; i++) {
+    steps.push({ line: 3, arrays: arr({ [i - 2]: 'cmp', [i - 3]: 'cmp' }, { [i - 1]: 'i' }), vars: { i }, note: `i = ${i}: vamos preencher memo[${i}] olhando as duas casas anteriores.` });
+    memo[i - 1] = memo[i - 2] + memo[i - 3];
+    steps.push({ line: 4, arrays: arr({ [i - 1]: 'new', [i - 2]: 'cmp', [i - 3]: 'cmp' }, { [i - 1]: 'i' }), vars: { i }, note: `memo[${i}] = memo[${i - 1}] + memo[${i - 2}] = ${memo[i - 2]} + ${memo[i - 3]} = <b>${memo[i - 1]}</b>.` });
+  }
+  steps.push({ line: 5, arrays: arr({ [n - 1]: 'new' }), note: `Devolve memo[${n}] = <b>${memo[n - 1]}</b>. Nenhuma recursão: ${n - 2} iterações do laço.` });
+  StepPlayer.mount(document.getElementById('pBU'), { code: BU, steps, speed: 1000 });
+
+  const fibv = (k) => { let x = 1, y = 1; for (let i = 3; i <= k; i++) [x, y] = [y, x + y]; return y; };
+  LineChart.mount(document.getElementById('chart'), {
+    series: [{ name: 'recursiva simples: 2·fib(n) − 1', f: (k) => 2 * fibv(k) - 1, color: 'var(--series-2)' },
+      { name: 'top-down com memo: 2n − 3', f: (k) => 2 * k - 3, color: 'var(--series-1)' }],
+    xMin: 3, xMax: 30, xLabel: 'n', yLabel: 'chamadas', log: true, tableXs: [5, 10, 20, 30] });
+
+  // MergeSort × Fibonacci
+  let id = 0;
+  const ms = (lo, hi) => { const nd = { id: id++, label: lo === hi ? `[${lo}]` : `[${lo}..${hi}]`, key: `${lo}-${hi}`, children: [] }; if (lo < hi) { const m = Math.floor((lo + hi) / 2); nd.children = [ms(lo, m), ms(m + 1, hi)]; } return nd; };
+  put('figMS', PD.drawTree(ms(1, 8), { all: true }, { dx: 46, nw: 42, dy: 60 }));
+  put('figF', PD.drawTree(PD.fibTree(6, false), { all: true }, { colors: col, dx: 46, nw: 44, dy: 60 }));
+
+  Quiz.mount(document.getElementById('quizBox'), [
+    { q: 'Por que a versão recursiva simples de fib é lenta?', options: ['Recalcula os mesmos subproblemas muitas vezes', 'A soma é uma operação cara', 'Usa um vetor muito grande', 'Os casos base estão errados'], answer: 0,
+      explain: 'fib(n − 2) é calculado dentro de fib(n − 1) e de novo diretamente. A repetição cresce exponencialmente.' },
+    { q: 'Na versão com memo, o que acontece quando fib(k) é chamado e memo[k] já está preenchido?', options: ['Devolve memo[k] sem fazer novas chamadas', 'Recalcula e compara', 'Apaga memo[k]', 'Chama fib(k − 1) mesmo assim'], answer: 0,
+      explain: 'Por isso a subárvore inteira daquela chamada desaparece.' },
+    { q: 'Qual propriedade faz a PD ganhar do algoritmo recursivo simples?', options: ['Superposição de subproblemas', 'Subestrutura ótima', 'Ordenação dos dados', 'Uso de pilha'], answer: 0,
+      explain: 'Sem repetição de subproblemas, anotar não economiza nada.' },
+    { q: 'A versão bottom-up de fib…', options: ['usa um laço dos casos base até n, sem recursão', 'começa em n e desce até 1', 'precisa de uma pilha de chamadas', 'é exponencial'], answer: 0,
+      explain: 'memo[1], memo[2], depois memo[3], … até memo[n]. $O(n)$.' },
+    { q: 'O que diferencia PD de divisão e conquista?', options: ['Na PD os subproblemas se repetem e as respostas são guardadas', 'Só a PD divide o problema', 'Só divisão e conquista usa recursão', 'PD sempre é mais lenta'], answer: 0,
+      explain: 'Os dois dividem. No MergeSort as metades são diferentes; no Fibonacci os subproblemas se repetem.' },
+  ]);
+});
+</script>
+</body>
+</html>

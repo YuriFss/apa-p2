@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 13.3 · Mochila 0-1 bottom-up</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/pd.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 13 · Programação Dinâmica</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 13 · Lição 3</p>
+<h1>Mochila 0-1 bottom-up: a tabela k</h1>
+<p class="lead">Esta é a forma que cai na prova: preencher a tabela k linha por linha, ler a resposta na última célula e depois descobrir quais itens foram levados. Nesta lição: a ordem de preenchimento, a tabela do slide célula a célula, a recuperação dos itens, a complexidade $O(n \cdot M)$ e um laboratório para conferir suas contas.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#ordem">Da recursão para a tabela</a></li>
+    <li><a href="#mao">Exemplo resolvido: algumas células à mão</a></li>
+    <li><a href="#anim">A tabela inteira, animada</a></li>
+    <li><a href="#codigo">O pseudocódigo</a></li>
+    <li><a href="#recuperar">Quais itens estão na mochila?</a></li>
+    <li><a href="#cx">Complexidade</a></li>
+    <li><a href="#prova">Na prova</a></li>
+    <li><a href="#lab">Laboratório</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="ordem">1. Da recursão para a tabela</h2>
+<p>Na lição anterior, a matriz memo guardava $f(k, w)$. Agora ela se chama <b>k</b>, como no slide: <b>k[i][m]</b> = o maior valor usando só os itens 1…i com capacidade m. A recorrência é a mesma:</p>
+$$k[i][m] = \begin{cases}
+0 & \text{se } i = 0 \text{ ou } m = 0 \\
+k[i-1][m] & \text{se } p_i > m \\
+\max\big(v_i + k[i-1][m - p_i],\ \ k[i-1][m]\big) & \text{se } p_i \le m
+\end{cases}$$
+<p>A pergunta do bottom-up: <b>em que ordem preencher</b> para que, quando chegarmos numa célula, as células de que ela precisa já estejam prontas?</p>
+<p>Olhe a fórmula: k[i][m] só usa células da <b>linha de cima</b> (i − 1). Uma logo acima, k[i−1][m]. Outra acima e à esquerda, k[i−1][m − p_i].</p>
+<div class="figrow">
+  <div><div id="figDep"></div></div>
+  <div><p>Exemplo: para k[3][7] (azul), com o item 3 de peso 4, consultamos k[2][7] (sem o item) e k[2][7 − 4] = k[2][3] (com o item). As duas consultadas estão em vermelho.</p>
+  <p>Então basta preencher <b>linha por linha, de cima para baixo</b>. Dentro da linha, qualquer ordem serve. Usamos da esquerda para a direita.</p></div>
+</div>
+
+<h2 id="mao">2. Exemplo resolvido: algumas células à mão</h2>
+<p>A instância do slide: capacidade <b>M = 7</b> e 4 itens.</p>
+<div class="items">
+  <div class="item"><b>item 1</b><span>peso 1</span><span>valor 1</span></div>
+  <div class="item"><b>item 2</b><span>peso 3</span><span>valor 4</span></div>
+  <div class="item"><b>item 3</b><span>peso 4</span><span>valor 5</span></div>
+  <div class="item"><b>item 4</b><span>peso 5</span><span>valor 7</span></div>
+</div>
+<p>A tabela tem linhas i = 0…4 (quantos itens podemos usar) e colunas m = 0…7 (capacidade). A linha 0 e a coluna 0 são zero: sem itens ou sem espaço, valor 0.</p>
+<div class="table-wrap"><table>
+<tr><th>Célula</th><th>Item i cabe em m?</th><th>Sem o item: k[i−1][m]</th><th>Com o item: v + k[i−1][m − p]</th><th>Resultado</th></tr>
+<tr><td>k[1][1]</td><td>peso 1 ≤ 1, cabe</td><td>k[0][1] = 0</td><td>1 + k[0][0] = 1</td><td class="num"><b>1</b></td></tr>
+<tr><td>k[2][1]</td><td>peso 3 &gt; 1, <b>não cabe</b></td><td>k[1][1] = 1</td><td>–</td><td class="num"><b>1</b> (copia de cima)</td></tr>
+<tr><td>k[2][3]</td><td>peso 3 ≤ 3, cabe</td><td>k[1][3] = 1</td><td>4 + k[1][0] = 4</td><td class="num"><b>4</b></td></tr>
+<tr><td>k[3][7]</td><td>peso 4 ≤ 7, cabe</td><td>k[2][7] = 5</td><td>5 + k[2][3] = 5 + 4 = 9</td><td class="num"><b>9</b></td></tr>
+<tr><td>k[4][7]</td><td>peso 5 ≤ 7, cabe</td><td>k[3][7] = 9</td><td>7 + k[3][2] = 7 + 1 = 8</td><td class="num"><b>9</b> (não leva o item 4)</td></tr>
+</table></div>
+<p>Em k[4][7], levar o item 4 dá só 8: ele ocupa 5 e sobram 2 de capacidade, onde só cabe o item 1. Deixar o item 4 de fora dá 9. A resposta do problema é <b>k[4][7] = 9</b>.</p>
+
+<h2 id="anim">3. A tabela inteira, animada</h2>
+<p>Cada célula leva dois passos. No primeiro, a célula atual fica azul e as consultadas ficam vermelhas. No segundo, o valor é escrito e a célula de onde ele veio fica verde.</p>
+<div class="legend">
+  <span><span class="sw" style="border-color:var(--accent);background:var(--accent-soft)"></span>célula atual</span>
+  <span><span class="sw" style="border-color:var(--bad);background:var(--bad-soft)"></span>consultadas</span>
+  <span><span class="sw" style="border-color:var(--aqua);background:var(--aqua-soft)"></span>de onde veio o valor</span>
+</div>
+<div id="pTable"></div>
+
+<h2 id="codigo">4. O pseudocódigo</h2>
+<p>É o código da animação, igual ao do slide:</p>
+<pre class="code"><span class="fn">knapsack(n, M, p, v)</span>
+1. <span class="kw">for</span> i = 0 <span class="kw">to</span> n:
+2.     <span class="kw">for</span> m = 0 <span class="kw">to</span> M:
+3.         <span class="kw">if</span> i == 0 <span class="kw">or</span> m == 0:  k[i][m] = 0                  <span class="caption">▸ casos base</span>
+4.         <span class="kw">else if</span> p[i−1] &lt;= m:                              <span class="caption">▸ o item i cabe</span>
+5.             k[i][m] = max(v[i−1] + k[i−1][m − p[i−1]], k[i−1][m])  <span class="caption">▸ com × sem</span>
+6.         <span class="kw">else</span>:
+7.             k[i][m] = k[i−1][m]                       <span class="caption">▸ não cabe: copia de cima</span>
+8. <span class="kw">return</span> k[n][M]</pre>
+<p>Lembre: <code>p[i−1]</code> é o peso do item i, porque o vetor começa em 0.</p>
+<p>Compare com a versão top-down da lição anterior: mesmas contas, mesma matriz. A diferença é a ordem. Top-down calcula só as células que a recursão pede, começando de k[n][M]. Bottom-up calcula todas, começando da linha 0. Sem recursão e sem pilha.</p>
+
+<h2 id="recuperar">5. Quais itens estão na mochila?</h2>
+<p>A tabela diz o valor ótimo, 9. Mas quais itens dão 9? Partimos de k[4][7] e voltamos pelas decisões. A regra:</p>
+<ul>
+  <li>Se k[i][m] = k[i−1][m], o mesmo valor é possível <b>sem</b> o item i. Ele fica de fora. Suba para k[i−1][m].</li>
+  <li>Se k[i][m] ≠ k[i−1][m], o item i foi necessário. <b>Ele entra.</b> Vá para k[i−1][m − p_i].</li>
+</ul>
+<div class="table-wrap"><table>
+<tr><th>Estou em</th><th>Comparo com a de cima</th><th>Conclusão</th><th>Vou para</th></tr>
+<tr><td>k[4][7] = 9</td><td>k[3][7] = 9, iguais</td><td>item 4 <b>fora</b></td><td>k[3][7]</td></tr>
+<tr><td>k[3][7] = 9</td><td>k[2][7] = 5, diferentes</td><td>item 3 <b>entra</b></td><td>k[2][7 − 4] = k[2][3]</td></tr>
+<tr><td>k[2][3] = 4</td><td>k[1][3] = 1, diferentes</td><td>item 2 <b>entra</b></td><td>k[1][3 − 3] = k[1][0]</td></tr>
+<tr><td>k[1][0]</td><td colspan="3">capacidade 0: fim</td></tr>
+</table></div>
+<p>Itens <b>{2, 3}</b>: peso 3 + 4 = 7 ≤ 7, valor 4 + 5 = 9. Confere com k[4][7].</p>
+<p>Animado (o caminho percorrido fica laranja):</p>
+<div id="pBack"></div>
+<p>O laço desce uma linha por iteração: no máximo n iterações, cada uma $O(1)$. Recuperar os itens custa $O(n)$.</p>
+
+<h2 id="cx">6. Complexidade</h2>
+<div class="table-wrap"><table>
+<tr><th>Parte</th><th>Quantas vezes</th><th>Custo de cada</th><th>Total</th></tr>
+<tr><td>laço de fora (i = 0 a n)</td><td class="num">n + 1</td><td></td><td></td></tr>
+<tr><td>laço de dentro (m = 0 a M)</td><td class="num">(n + 1)(M + 1)</td><td>$O(1)$: um if, uma soma, um max</td><td>$O(n \cdot M)$</td></tr>
+<tr><td>recuperar os itens</td><td class="num">≤ n</td><td>$O(1)$</td><td>$O(n)$</td></tr>
+<tr><th colspan="3">Total (tempo)</th><th>$O(n \cdot M)$</th></tr>
+<tr><th colspan="3">Memória (a tabela)</th><th>$O(n \cdot M)$</th></tr>
+</table></div>
+<p>Compare com a força bruta, $O(2^n)$. Com n = 50 itens e M = 1000: a força bruta testa cerca de $10^{15}$ subconjuntos; a tabela tem 51 × 1001 ≈ 51 mil células.</p>
+<div class="box">
+  <span class="tag">Detalhe</span>
+  <p>$O(n \cdot M)$ depende do <b>valor</b> de M, não da quantidade de dados. Se M = 1 bilhão, a tabela fica gigante. Por isso esse tempo é chamado <b>pseudo-polinomial</b>. A mochila 0-1 continua sendo um problema difícil (NP-difícil) quando M é muito grande.</p>
+</div>
+
+<h2 id="prova">7. Na prova</h2>
+<p>A Prova 3 do Prof. Bruno pede exatamente isto: "resolva usando PD bottom-up e indique o valor ótimo"; "explique como recuperar o subconjunto de itens, descubra os itens e dê a complexidade".</p>
+<div class="box prof">
+  <span class="tag">Na prova, escreva</span>
+  <ol>
+    <li>A recorrência e o que k[i][m] significa, em uma frase.</li>
+    <li>A tabela inteira, com a linha 0 e a coluna 0 de zeros. Para algumas células, mostre a conta: max(v + k[i−1][m − p], k[i−1][m]).</li>
+    <li>"O valor ótimo é k[n][M] = …".</li>
+    <li>A recuperação: comece em k[n][M]; se a célula for igual à de cima, o item fica de fora; se for diferente, o item entra e a capacidade diminui do peso dele. Faça a tabela da seção 5.</li>
+    <li>Complexidade: $(n+1)(M+1)$ células, cada uma $O(1)$, logo $O(n \cdot M)$. Recuperação $O(n)$.</li>
+  </ol>
+</div>
+
+<h2 id="lab">8. Laboratório</h2>
+<p>Digite sua instância (pesos e valores separados por vírgula). Use para <b>conferir</b> uma tabela que você já fez à mão.</p>
+<div class="lab-in">
+  <label>pesos p <input id="inP" value="1, 3, 4, 5"></label>
+  <label>valores v <input id="inV" value="1, 4, 5, 7"></label>
+  <label>capacidade M <input id="inM" value="7" style="width:60px"></label>
+  <button class="btn primary" type="button" id="go">montar</button>
+</div>
+<div class="note" id="labMsg"></div>
+<h3>Preenchimento</h3>
+<div id="labTable"></div>
+<h3>Recuperação dos itens</h3>
+<div id="labBack"></div>
+
+<h2 id="quiz">9. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">10. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 13.3 (questão de prova antiga)</span>
+  <p>Prova 3 do Prof. Bruno: capacidade M = 8 e 5 itens com pesos p = [4, 3, 1, 5, 3] e valores v = [2, 3, 3, 4, 5].</p>
+  <ol type="a">
+    <li>Resolva com PD bottom-up: monte a tabela inteira. Qual o valor da solução ótima?</li>
+    <li>Explique como recuperar o subconjunto de itens a partir da tabela. Aplique e diga quais itens estão na solução.</li>
+    <li>Dê a complexidade do algoritmo, com argumentos.</li>
+  </ol>
+  <p class="caption">Faça no papel primeiro. Depois confira no laboratório e mande no chat o que errou.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "Programação Dinâmica (Parte 1)", Profs. Bruno Bruck e Teobaldo Bulhões: tabela k[n][M], pseudocódigo bottom-up, "como descobrir quais itens estão na mochila" e complexidade $O(n \cdot M)$. Exercício: Prova 3 do Prof. Bruno, Questão 1.</p>
+</div>
+
+<div class="pager">
+  <a href="0012-pd-mochila-recorrencia.html"><small>← anterior</small>13.2 Mochila: recorrência e top-down</a>
+  <a class="next" href="../index.html"><small>índice →</small>APA · Prova 2</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const p = [1, 3, 4, 5], v = [1, 4, 5, 7], M = 7;
+  const K = PD.solve(p, v, M);
+  document.getElementById('figDep').append(PD.drawTable(p, v, M, { grid: K, mk: { cur: [3, 7], look: [[2, 7], [2, 3]] } }));
+
+  const pT = StepPlayer.mount(document.getElementById('pTable'), { code: PD.TABLE_CODE, steps: PD.tableSteps(p, v, M), extra: PD.tableExtra(p, v, M), stack: true, speed: 900 });
+  const pB = StepPlayer.mount(document.getElementById('pBack'), { code: PD.BACK_CODE, steps: PD.backSteps(p, v, M), extra: PD.tableExtra(p, v, M), stack: true, speed: 1300 });
+
+  // laboratório
+  const msg = document.getElementById('labMsg');
+  let lt = null, lb = null;
+  const parse = (s) => s.split(/[,;\s]+/).filter(Boolean).map(Number);
+  function build() {
+    const pp = parse(document.getElementById('inP').value), vv = parse(document.getElementById('inV').value), MM = Number(document.getElementById('inM').value);
+    const bad = (x) => !Number.isInteger(x) || x < 0;
+    if (!pp.length || pp.length !== vv.length) { msg.innerHTML = 'Pesos e valores precisam ter a mesma quantidade.'; return; }
+    if (pp.some(bad) || vv.some(bad) || bad(MM)) { msg.innerHTML = 'Use só inteiros não negativos.'; return; }
+    if (pp.length > 8 || MM > 15) { msg.innerHTML = 'Para caber na tela: no máximo 8 itens e M ≤ 15.'; return; }
+    const KK = PD.solve(pp, vv, MM);
+    msg.innerHTML = `${pp.length} itens, M = ${MM}. Valor ótimo k[${pp.length}][${MM}] = <b>${KK[pp.length][MM]}</b>. Use os players para ver cada passo.`;
+    const ts = PD.tableSteps(pp, vv, MM), bs = PD.backSteps(pp, vv, MM);
+    if (!lt) {
+      lt = StepPlayer.mount(document.getElementById('labTable'), { code: PD.TABLE_CODE, steps: ts, extra: (st, el) => PD.tableExtra(cur.p, cur.v, cur.M)(st, el), stack: true, speed: 700 });
+      lb = StepPlayer.mount(document.getElementById('labBack'), { code: PD.BACK_CODE, steps: bs, extra: (st, el) => PD.tableExtra(cur.p, cur.v, cur.M)(st, el), stack: true, speed: 1200 });
+    }
+    cur = { p: pp, v: vv, M: MM };
+    lt.load(ts); lb.load(bs);
+  }
+  let cur = { p, v, M };
+  document.getElementById('go').addEventListener('click', build);
+  build();
+
+  Quiz.mount(document.getElementById('quizBox'), [
+    { q: 'Para calcular k[i][m], quais células são consultadas?', options: ['k[i−1][m] e k[i−1][m − p_i]', 'k[i][m−1] e k[i−1][m]', 'Toda a linha i − 1', 'k[i+1][m]'], answer: 0,
+      explain: 'Sem o item (logo acima) e com o item (acima, $p_i$ colunas à esquerda).' },
+    { q: 'Por que podemos preencher a tabela linha por linha?', options: ['Cada célula só depende da linha de cima', 'Porque a tabela é quadrada', 'Porque os pesos estão ordenados', 'Porque a coluna 0 é zero'], answer: 0,
+      explain: 'Quando chegamos na linha i, a linha i − 1 inteira já está pronta.' },
+    { q: 'Na recuperação, k[i][m] = k[i−1][m]. O que concluímos?', options: ['O item i fica de fora; subimos para k[i−1][m]', 'O item i entra', 'Chegamos ao fim', 'A tabela está errada'], answer: 0,
+      explain: 'O mesmo valor é possível sem o item i.' },
+    { q: 'Na recuperação, o item i entrou. Para qual célula vamos?', options: ['k[i−1][m − p_i]', 'k[i−1][m]', 'k[i][m − p_i]', 'k[i−1][m − v_i]'], answer: 0,
+      explain: 'Ele ocupou $p_i$ da capacidade; o resto da solução está na linha de cima, com a capacidade que sobrou.' },
+    { q: 'Complexidade de tempo do bottom-up da mochila:', options: ['$O(n \\cdot M)$', '$O(2^n)$', '$O(n^2)$', '$O(n + M)$'], answer: 0,
+      explain: '$(n+1)(M+1)$ células, cada uma $O(1)$.' },
+  ]);
+});
+</script>
+</body>
+</html>
