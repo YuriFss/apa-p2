@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 10.1 · O problema do caixeiro viajante</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/tsp.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 10 · Caixeiro Viajante</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 10 · Lição 1</p>
+<h1>O problema do caixeiro viajante</h1>
+<p class="lead">Um vendedor precisa visitar várias cidades e voltar para casa. Qual a ordem mais barata? Nesta lição: o que é um tour, quantos tours existem e por que testar todos não funciona.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#problema">O problema, com um exemplo</a></li>
+    <li><a href="#contar">Quantos tours existem?</a></li>
+    <li><a href="#bruta">Força bruta</a></li>
+    <li><a href="#eficiente">O que é resolver "eficientemente"</a></li>
+    <li><a href="#heur">Heurística</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="problema">1. O problema, com um exemplo</h2>
+<p>Usaremos estas 5 cidades em toda a aula. A tabela dá a distância entre cada par. Ela é simétrica: ir de A a B custa o mesmo que ir de B a A.</p>
+<div class="figrow">
+  <div><div id="figM"></div></div>
+  <div><div id="figG"></div><p class="caption">Cada par de cidades tem uma estrada. O grafo é completo.</p></div>
+</div>
+<p>Por enquanto, olhe só A, B, C e D. O vendedor sai de A, passa por B, C e D e <b>volta para A</b>:</p>
+<div class="table-wrap"><table>
+<tr><th>Trecho</th><td>A → B</td><td>B → C</td><td>C → D</td><td>D → A</td><th>Total</th></tr>
+<tr><th>Custo</th><td class="num">3</td><td class="num">4</td><td class="num">5</td><td class="num"><b>2</b></td><td class="num"><b>14</b></td></tr>
+</table></div>
+<p>A última coluna é a volta para casa. Sem ela, o custo seria 12, e isso <b>não</b> é um tour.</p>
+<div class="figrow">
+  <div><div id="figPath"></div><p class="caption"><b>Caminho</b> A → B → C → D: 3 arestas. Não volta. <b>Não é tour.</b></p></div>
+  <div><div id="figTour"></div><p class="caption"><b>Tour</b> A → B → C → D → A: 4 arestas. Fecha o ciclo.</p></div>
+</div>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <ul>
+    <li><b>Entrada:</b> n cidades e o custo $c_{ij}$ de ir de i a j.</li>
+    <li><b>Tour:</b> um ciclo que passa por <b>cada cidade exatamente uma vez</b> e <b>volta à cidade de partida</b>.</li>
+    <li><b>Custo do tour:</b> a soma das suas <b>n arestas</b>.</li>
+    <li><b>Objetivo:</b> achar o tour de menor custo.</li>
+  </ul>
+</div>
+<div class="box">
+  <span class="tag">Compare com a Aula 11</span>
+  <p>Uma árvore geradora tem $n - 1$ arestas. Um tour tem $n$ arestas: é o caminho mais a volta.</p>
+</div>
+
+<h2 id="contar">2. Quantos tours existem?</h2>
+<p>Ainda com 4 cidades. Começamos sempre em A. Sobram B, C e D para ordenar: $3! = 6$ ordens.</p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Ordem</th><th>Custo</th><th>Observação</th></tr>
+<tr><td>1</td><td>A → B → C → D → A</td><td class="num">3 + 4 + 5 + 2 = 14</td><td></td></tr>
+<tr><td>2</td><td>A → B → D → C → A</td><td class="num">3 + 7 + 5 + 4 = 19</td><td></td></tr>
+<tr><td>3</td><td>A → C → B → D → A</td><td class="num">4 + 4 + 7 + 2 = 17</td><td></td></tr>
+<tr><td>4</td><td>A → C → D → B → A</td><td class="num">19</td><td>é a ordem 2 ao contrário</td></tr>
+<tr><td>5</td><td>A → D → B → C → A</td><td class="num">17</td><td>é a ordem 3 ao contrário</td></tr>
+<tr><td>6</td><td>A → D → C → B → A</td><td class="num">14</td><td>é a ordem 1 ao contrário</td></tr>
+</table></div>
+<p>Percorrer um ciclo ao contrário usa as mesmas arestas. Então são só <b>3 tours diferentes</b>:</p>
+<div class="figrow" style="grid-template-columns:repeat(3,1fr)">
+  <div><div id="t1"></div><p class="caption">custo 14 (ótimo)</p></div>
+  <div><div id="t2"></div><p class="caption">custo 19</p></div>
+  <div><div id="t3"></div><p class="caption">custo 17</p></div>
+</div>
+<p>Agora para n cidades, em três passos:</p>
+<ol class="steps">
+  <li>Ordens de n cidades: $n!$.</li>
+  <li>A cidade de partida não importa (o ciclo é o mesmo). Fixe uma: $\dfrac{n!}{n} = (n-1)!$.</li>
+  <li>O sentido não importa. Divida por 2: $\dfrac{(n-1)!}{2}$.</li>
+</ol>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Com n cidades (grafo completo e simétrico) existem $\dfrac{(n-1)!}{2}$ tours. Confira: $n = 4$ dá $\frac{3!}{2} = 3$. $n = 5$ dá $\frac{4!}{2} = 12$.</p>
+</div>
+
+<h2 id="bruta">3. Força bruta</h2>
+<p>A ideia mais simples: calcular o custo de todos os tours e ficar com o menor. Veja nas 4 cidades:</p>
+<div id="pBrute"></div>
+<p>Funciona. O problema é o tempo. Cada tour custa $O(n)$ para somar, então a força bruta custa $O(n \cdot (n-1)!) = O(n!)$. O slide supõe um computador que testa $10^4$ tours por segundo:</p>
+<div class="table-wrap"><table>
+<tr><th>Cidades</th><th>Tours $(n-1)!/2$</th><th>Tempo</th><th>Compare: $2^n$</th></tr>
+<tr><td class="num">5</td><td class="num">12</td><td>1 milissegundo</td><td class="num">32</td></tr>
+<tr><td class="num">10</td><td class="num">181 440</td><td>18 segundos</td><td class="num">1 024</td></tr>
+<tr><td class="num">13</td><td class="num">239 500 800</td><td>7 horas</td><td class="num">8 192</td></tr>
+<tr><td class="num">15</td><td class="num">43 589 145 600</td><td>50 dias</td><td class="num">32 768</td></tr>
+<tr><td class="num">16</td><td class="num">653 837 184 000</td><td>2 anos</td><td class="num">65 536</td></tr>
+<tr><td class="num">20</td><td class="num">60 822 550 204 416 000</td><td>193 milênios</td><td class="num">1 048 576</td></tr>
+</table></div>
+<p>O fatorial cresce muito mais rápido que $2^n$. Com 100 cidades, $100! \approx 9{,}3 \times 10^{157}$. O número de átomos no universo é cerca de $10^{80}$.</p>
+
+<h2 id="eficiente">4. O que é resolver "eficientemente"</h2>
+<p>Exemplo do slide: achar o maior valor de uma lista.</p>
+<pre class="code">max_val = 0
+<span class="kw">for</span> j <span class="kw">in</span> range(len(l)):
+    <span class="kw">if</span> l[j] &gt; max_val:
+        max_val = l[j]</pre>
+<p>Uma passada pela lista: $O(n)$. Dobrar a lista dobra o tempo. Isso é eficiente.</p>
+<div class="box tip">
+  <span class="tag">Regra (Jack Edmonds, 1965)</span>
+  <p>Um algoritmo é <b>eficiente</b> quando roda em <b>tempo polinomial</b>: $O(n)$, $O(n^2)$, $O(n^3)$… $O(n!)$ e $O(2^n)$ não são polinomiais.</p>
+</div>
+<p>Para o caixeiro viajante, ninguém conhece um algoritmo exato polinomial. Saber se ele existe é a pergunta <b>P = NP?</b>, ainda aberta. A maioria dos pesquisadores acredita que não existe.</p>
+<p>Então, para problemas difíceis, é preciso abrir mão de <b>uma</b> destas três coisas:</p>
+<div class="table-wrap"><table>
+<tr><th>Abre mão de…</th><th>Fica com…</th><th>Exemplo</th></tr>
+<tr><td>garantia de solução ótima</td><td>tempo polinomial, qualquer instância</td><td><b>heurísticas</b>: vizinho mais próximo, melhor inserção, 2-opt</td></tr>
+<tr><td>tempo polinomial</td><td>solução ótima, qualquer instância</td><td>métodos exatos: força bruta, branch-and-bound, programação linear inteira</td></tr>
+<tr><td>resolver qualquer instância</td><td>ótimo em tempo polinomial</td><td>algoritmos para casos especiais</td></tr>
+</table></div>
+
+<h2 id="heur">5. Heurística</h2>
+<p>A palavra vem do grego <i>heurísko</i>, "eu encontro". É a mesma origem de "eureka!".</p>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <p>Uma <b>heurística</b> é um método rápido (polinomial) que acha uma solução <b>boa</b>, mas <b>sem garantia</b> de que ela seja a ótima.</p>
+</div>
+<div class="box warn">
+  <span class="tag">Cuidado</span>
+  <ul>
+    <li>Heurística não "geralmente acha o ótimo global". Às vezes acha, às vezes não. Ninguém garante.</li>
+    <li>As heurísticas desta aula <b>não têm sorteio</b>. Com a mesma entrada, dão sempre a mesma resposta.</li>
+  </ul>
+</div>
+<p>Esta aula estuda dois tipos:</p>
+<div class="table-wrap"><table>
+<tr><th>Tipo</th><th>O que faz</th><th>Nesta aula</th></tr>
+<tr><td><b>Construtiva</b></td><td>monta um tour do zero, uma cidade por vez</td><td>vizinho mais próximo, melhor inserção</td></tr>
+<tr><td><b>Busca local</b> (melhoria)</td><td>parte de um tour pronto e faz pequenas trocas que diminuem o custo</td><td>2-opt, 3-opt</td></tr>
+</table></div>
+<p>As duas construtivas são <b>gulosas</b>: em cada passo fazem a escolha que parece melhor <b>agora</b> e nunca voltam atrás.</p>
+
+<h2 id="quiz">6. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">7. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 10.1</span>
+  <ol type="a">
+    <li>Quantos tours diferentes existem com 6 cidades? E com 7?</li>
+    <li>Use a matriz da seção 1 com as cidades A, B, C e E (sem D). Liste os 3 tours, o custo de cada um e o ótimo.</li>
+    <li>Um colega diz: "a força bruta do TSP é $O(2^n)$". Está certo? Justifique.</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "O Problema do Caixeiro Viajante", Prof. Teobaldo Bulhões, slides 2 a 21.</p>
+</div>
+
+<div class="pager">
+  <a href="../index.html"><small>← índice</small>APA · Prova 2</a>
+  <a class="next" href="0008-tsp-vizinho-mais-proximo.html"><small>próxima →</small>10.2 Vizinho mais próximo</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const M = TSP.M5;
+  const M4 = { V: ['A', 'B', 'C', 'D'], w: M.w, pos: { A: [80, 60], B: [330, 60], C: [330, 220], D: [80, 220] } };
+  const put = (id, node) => document.getElementById(id).append(node);
+  put('figM', TSP.matrix(M));
+  const all = []; M.V.forEach((a, i) => M.V.slice(i + 1).forEach((b) => all.push([a, b])));
+  put('figG', TSP.draw(M, { cand: all }));
+  put('figPath', TSP.draw(M4, { tour: ['A', 'B', 'C', 'D'], closed: false }));
+  put('figTour', TSP.draw(M4, { tour: ['A', 'B', 'C', 'D'] }));
+  put('t1', TSP.draw(M4, { tour: ['A', 'B', 'C', 'D'] }));
+  put('t2', TSP.draw(M4, { tour: ['A', 'B', 'D', 'C'] }));
+  put('t3', TSP.draw(M4, { tour: ['A', 'C', 'B', 'D'] }));
+  StepPlayer.mount(document.getElementById('pBrute'), { code: TSP.BRUTE_CODE, steps: TSP.traceBrute(M4), extra: TSP.extra(M4), stack: true, speed: 1300 });
+
+  Quiz.mount(document.getElementById("quizBox"), [
+    { q: 'Quantas arestas tem um tour com 8 cidades?', options: ['8', '7', '9', '16'], answer: 0,
+      explain: 'Um tour é um ciclo: 7 arestas para visitar todas e mais 1 para voltar. Uma árvore geradora teria 7.' },
+    { q: 'Quantos tours diferentes existem com 5 cidades (grafo completo, simétrico)?', options: ['12', '120', '24', '32'], answer: 0,
+      explain: '$(5-1)!/2 = 24/2 = 12$. Fixar a partida divide por 5; ignorar o sentido divide por 2.' },
+    { q: 'Por que dividimos por 2 na contagem de tours?', options: ['Percorrer o ciclo ao contrário usa as mesmas arestas', 'A cidade de partida não importa', 'Metade dos tours é inválida', 'Cada aresta aparece duas vezes na matriz'], answer: 0,
+      explain: 'A → B → C → A e A → C → B → A são o mesmo ciclo. A divisão pela partida é outra: divide por n.' },
+    { q: 'O vizinho mais próximo roda duas vezes na mesma matriz, a partir da mesma cidade. Os resultados…', options: ['são sempre iguais', 'podem ser diferentes, porque heurística é aleatória', 'são iguais só se a matriz for simétrica', 'são sempre o ótimo'], answer: 0,
+      explain: 'Ele é determinístico: não sorteia nada. Heurística significa "sem garantia de ótimo", não "aleatório".' },
+  ]);
+});
+</script>
+</body>
+</html>

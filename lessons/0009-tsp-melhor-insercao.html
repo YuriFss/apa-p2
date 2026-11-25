@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 10.3 · Melhor inserção</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/tsp.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 10 · Caixeiro Viajante</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 10 · Lição 3</p>
+<h1>Heurística da melhor inserção</h1>
+<p class="lead">Em vez de andar de cidade em cidade, mantemos um ciclo pequeno e encaixamos uma cidade por vez onde ela custa menos. Nesta lição: o custo de uma inserção, a execução passo a passo e o custo $O(n^3)$.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#delta">Quanto custa inserir uma cidade</a></li>
+    <li><a href="#exemplo">Exemplo resolvido</a></li>
+    <li><a href="#algo">O algoritmo, animado</a></li>
+    <li><a href="#compara">Comparando com o vizinho mais próximo</a></li>
+    <li><a href="#cx">Complexidade</a></li>
+    <li><a href="#outras">Outras inserções</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="delta">1. Quanto custa inserir uma cidade</h2>
+<p>Tour atual: A → B → A. Custo 3 + 3 = 6. Queremos colocar C entre A e B.</p>
+<div class="figrow">
+  <div><div id="figAntes"></div><p class="caption"><b>Antes:</b> A → B → A, custo 3 + 3 = 6. A linha A–B é usada na ida e na volta.</p></div>
+  <div><div id="figDepois"></div><p class="caption"><b>Depois:</b> A → C → B → A, custo 4 + 4 + 3 = 11.</p></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Aresta</th><th>O que acontece</th><th>Efeito no custo</th></tr>
+<tr><td>A–B (a ida)</td><td><b>sai</b></td><td class="num">− 3</td></tr>
+<tr><td>A–C</td><td>entra</td><td class="num">+ 4</td></tr>
+<tr><td>C–B</td><td>entra</td><td class="num">+ 4</td></tr>
+<tr><th colspan="2">Variação Δ</th><th class="num">+ 5</th></tr>
+</table></div>
+<p>Novo custo: 6 + 5 = 11. A aresta A–B <b>sai</b>, porque agora passamos por C no meio. Se você esquecer de tirá-la, chega em 16, um valor errado.</p>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Inserir a cidade k entre i e j (vizinhas no tour) custa</p>
+  $$\Delta = c_{ik} + c_{kj} - c_{ij}$$
+  <p>Duas arestas entram, uma sai. Novo custo = custo antigo + Δ.</p>
+</div>
+
+<h2 id="exemplo">2. Exemplo resolvido</h2>
+<p>Mesma matriz das lições anteriores:</p>
+<div id="figM"></div>
+<p><b>Início.</b> A aresta mais barata da matriz é A–D = 2. O tour começa como A → D → A, custo 4.</p>
+<p><b>Iteração 1.</b> Fora do tour: B, C, E. Com 2 cidades, A–D e D–A são a mesma aresta, então só há uma posição.</p>
+<div class="table-wrap"><table>
+<tr><th>k</th><th>entre</th><th>Δ</th></tr>
+<tr><td>B</td><td>A–D</td><td>3 + 7 − 2 = 8</td></tr>
+<tr style="background:var(--orange-soft)"><td>C</td><td>A–D</td><td>4 + 5 − 2 = <b>7</b></td></tr>
+<tr><td>E</td><td>A–D</td><td>7 + 6 − 2 = 11</td></tr>
+</table></div>
+<p>Menor Δ: C. Tour A → C → D → A, custo 4 + 7 = <b>11</b>.</p>
+<p><b>Iteração 2.</b> Fora: B, E. O tour tem 3 arestas: A–C, C–D, D–A. Cada cidade fora é testada nas 3:</p>
+<div class="table-wrap"><table>
+<tr><th>k</th><th>entre A–C</th><th>entre C–D</th><th>entre D–A</th></tr>
+<tr><td>B</td><td style="background:var(--orange-soft)">3 + 4 − 4 = <b>3</b></td><td>4 + 7 − 5 = 6</td><td>7 + 3 − 2 = 8</td></tr>
+<tr><td>E</td><td>7 + 7 − 4 = 10</td><td>7 + 6 − 5 = 8</td><td>6 + 7 − 2 = 11</td></tr>
+</table></div>
+<p>Menor Δ: B entre A e C. Tour A → B → C → D → A, custo 11 + 3 = <b>14</b>.</p>
+<p><b>Iteração 3.</b> Fora: só E. O tour tem 4 arestas:</p>
+<div class="table-wrap"><table>
+<tr><th>k</th><th>entre A–B</th><th>entre B–C</th><th>entre C–D</th><th>entre D–A</th></tr>
+<tr><td>E</td><td>7 + 3 − 3 = 7</td><td style="background:var(--orange-soft)">3 + 7 − 4 = <b>6</b></td><td>7 + 6 − 5 = 8</td><td>6 + 7 − 2 = 11</td></tr>
+</table></div>
+<p>E entra entre B e C. Tour final: A → B → E → C → D → A, custo 14 + 6 = <b>20</b>.</p>
+
+<h2 id="algo">3. O algoritmo, animado</h2>
+<p>Pseudocódigo do slide:</p>
+<pre class="code"><span class="fn">procedimento HMI()</span>
+1: Inicialize a solução com a aresta ij de menor custo. Ou seja, construa
+   um tour de custo mínimo com apenas dois vértices.
+2: Se todos os vértices foram visitados, retorne a solução e termine.
+3: Para cada vértice j não visitado, avalie a sua inserção em todas as
+   posições da solução parcial. Realize a melhor inserção.
+4: Retorne para a linha 2.</pre>
+<p>A animação faz exatamente as contas da seção 2. A aresta vermelha tracejada é a que sai; as cinzas tracejadas são as que entrariam.</p>
+<div id="pHMI"></div>
+
+<h2 id="compara">4. Comparando com o vizinho mais próximo</h2>
+<div class="figrow">
+  <div><div id="figHVM"></div><p class="caption"><b>Vizinho mais próximo</b> (de A): 21.</p></div>
+  <div><div id="figHMI"></div><p class="caption"><b>Melhor inserção:</b> 20. O ótimo é 19.</p></div>
+</div>
+<p>A melhor inserção não fica presa a um caminho. Uma cidade pode entrar em qualquer ponto do ciclo, então não existe aquela "volta obrigatória" cara do fim do HVM. No slide, com cerca de 50 cidades: HVM 497, melhor inserção 456, ótimo 413.</p>
+<p>Ela também é <b>gulosa</b>: em cada iteração faz a inserção mais barata agora e nunca tira uma cidade do lugar. Por isso também não garante o ótimo.</p>
+
+<h2 id="cx">5. Complexidade</h2>
+<p>Com matriz de distâncias ($c_{ij}$ em $O(1)$). Na iteração em que o tour tem t cidades, existem n − t cidades fora e t posições.</p>
+<div class="table-wrap"><table>
+<tr><th>Passo</th><th>Quantas vezes</th><th>Custo de cada</th><th>Total</th></tr>
+<tr><td>Início: achar a aresta mais barata</td><td class="num">1</td><td>olha os $n(n-1)/2$ pares: $O(n^2)$</td><td>$O(n^2)$</td></tr>
+<tr><td>Laço principal</td><td class="num">n − 2</td><td></td><td></td></tr>
+<tr><td>&nbsp;&nbsp;avaliar todos os pares (k, posição)</td><td class="num">n − 2</td><td>$(n - t) \cdot t \le n^2$ contas de Δ, cada uma $O(1)$</td><td>$O(n^3)$</td></tr>
+<tr><td>&nbsp;&nbsp;inserir k no tour (vetor ou lista)</td><td class="num">n − 2</td><td>$O(n)$</td><td>$O(n^2)$</td></tr>
+<tr><th colspan="3">Total</th><th>$O(n^3)$</th></tr>
+</table></div>
+<p>Conferindo com o exemplo: as iterações avaliaram 3, 6 e 4 inserções. Em geral, a iteração t avalia $(n-t) \cdot t$, e a soma dessas parcelas é da ordem de $n^3$.</p>
+<p>Compare: HVM $O(n^2)$, melhor inserção $O(n^3)$. A inserção é mais cara e em geral dá tours melhores.</p>
+
+<h2 id="outras">6. Outras inserções</h2>
+<p>Toda heurística de inserção responde duas perguntas: <b>qual</b> cidade entra e <b>onde</b> ela entra. A melhor inserção do slide escolhe as duas juntas, pelo menor Δ. Existem variantes (não estão no slide, só para reconhecer o nome):</p>
+<div class="table-wrap"><table>
+<tr><th>Variante</th><th>Qual cidade entra</th><th>Onde entra</th></tr>
+<tr><td><b>Melhor (mais barata) inserção</b></td><td colspan="2">o par (k, posição) com menor Δ</td></tr>
+<tr><td>Inserção mais próxima</td><td>a mais perto de alguma cidade do tour</td><td>na posição de menor Δ</td></tr>
+<tr><td>Inserção mais distante</td><td>a mais longe do tour</td><td>na posição de menor Δ</td></tr>
+<tr><td>Inserção aleatória</td><td>sorteada</td><td>na posição de menor Δ</td></tr>
+</table></div>
+
+<h2 id="quiz">7. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">8. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 10.3</span>
+  <p>Use a matriz do Exercício 10.2 (cidades P, Q, R, S, T).</p>
+  <ol type="a">
+    <li>Qual é a aresta inicial da melhor inserção? Qual o custo do tour com 2 cidades?</li>
+    <li>Execute a melhor inserção até o fim. Em cada iteração, monte a tabela de Δ e diga quem entra e onde.</li>
+    <li>Compare o custo final com o do vizinho mais próximo a partir de P.</li>
+    <li>Na iteração em que o tour tem t cidades, quantos Δ são calculados? Por que o total é $O(n^3)$?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "O Problema do Caixeiro Viajante", Prof. Teobaldo Bulhões, slides 24 e 25 (Algoritmo 2). Variantes de inserção: Rosenkrantz, Stearns e Lewis, <i>An analysis of several heuristics for the traveling salesman problem</i>, SIAM J. Computing, 1977.</p>
+</div>
+
+<div class="pager">
+  <a href="0008-tsp-vizinho-mais-proximo.html"><small>← anterior</small>10.2 Vizinho mais próximo</a>
+  <a class="next" href="0010-tsp-busca-local-2opt.html"><small>próxima →</small>10.4 Busca local: 2-opt</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const M = TSP.M5;
+  const put = (id, node) => document.getElementById(id).append(node);
+  put('figM', TSP.matrix(M));
+  const MABC = { V: ['A', 'B', 'C'], w: M.w, pos: { A: M.pos.A, B: M.pos.B, C: M.pos.C } };
+  put('figAntes', TSP.draw(MABC, { tour: ['A', 'B'], cand: [['A', 'C'], ['C', 'B']] }));
+  put('figDepois', TSP.draw(MABC, { tour: ['A', 'C', 'B'], add: [['A', 'C'], ['C', 'B']] }));
+  put('figHVM', TSP.draw(M, { tour: ['A', 'D', 'C', 'B', 'E'] }));
+  put('figHMI', TSP.draw(M, { tour: ['A', 'B', 'E', 'C', 'D'] }));
+  StepPlayer.mount(document.getElementById('pHMI'), { code: TSP.HMI_CODE, steps: TSP.traceHMI(M), extra: TSP.extra(M), stack: true, speed: 1400 });
+
+  Quiz.mount(document.getElementById("quizBox"), [
+    { q: 'Tour A → B → C → A. Inserir D entre B e C custa…', options: ['$c_{BD} + c_{DC} - c_{BC}$', '$c_{BD} + c_{DC}$', '$c_{BD} + c_{DC} + c_{BC}$', '$c_{AD} + c_{DC} - c_{AC}$'], answer: 0,
+      explain: 'Entram B–D e D–C. Sai B–C.' },
+    { q: 'Como a melhor inserção do slide começa?', options: ['Com a aresta mais barata da matriz, ida e volta', 'Com a cidade 1 sozinha', 'Com o tour do vizinho mais próximo', 'Com as três cidades mais próximas'], answer: 0,
+      explain: 'Linha 1 do slide: um tour de custo mínimo com apenas dois vértices.' },
+    { q: 'Tour com t cidades e n − t cidades fora. Quantos Δ a iteração calcula?', options: ['$(n - t) \\cdot t$', '$n - t$', '$t$', '$n^2$ sempre'], answer: 0,
+      explain: 'Cada cidade fora é testada em cada uma das t arestas do tour.' },
+    { q: 'Complexidade da melhor inserção com matriz:', options: ['$O(n^3)$', '$O(n^2)$', '$O(n \\log n)$', '$O(n!)$'], answer: 0,
+      explain: 'n − 2 iterações, cada uma com até $n^2$ contas de Δ.' },
+  ]);
+});
+</script>
+</body>
+</html>

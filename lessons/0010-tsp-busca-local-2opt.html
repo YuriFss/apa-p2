@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 10.4 · Busca local 2-opt</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/tsp.js"></script>
+<script defer src="../assets/quiz.js"></script>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 10 · Caixeiro Viajante</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 10 · Lição 4</p>
+<h1>Busca local: 2-opt e 3-opt</h1>
+<p class="lead">As heurísticas construtivas entregam um tour pronto. A busca local tenta melhorá-lo com pequenas trocas. Nesta lição: o movimento 2-opt, ótimo local × ótimo global, o 3-opt e, no fim, como se resolve o TSP de forma exata.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#mov">Um movimento 2-opt, com um exemplo</a></li>
+    <li><a href="#viz">Todos os vizinhos de um tour</a></li>
+    <li><a href="#algo">O algoritmo, animado</a></li>
+    <li><a href="#local">Ótimo local não é ótimo global</a></li>
+    <li><a href="#lab">Laboratório com 30 cidades</a></li>
+    <li><a href="#cx">Complexidade e 3-opt</a></li>
+    <li><a href="#exato">Solução exata</a></li>
+    <li><a href="#resumo">Resumo da aula</a></li>
+    <li><a href="#quiz">Quiz</a> e <a href="#exercicio">exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="mov">1. Um movimento 2-opt, com um exemplo</h2>
+<p>Partimos do tour do vizinho mais próximo: A → D → C → B → E → A, custo 21.</p>
+<p>O 2-opt <b>tira duas arestas</b> e religa o tour do único outro jeito possível. Vamos tirar D–C e E–A:</p>
+<div class="figrow">
+  <div><div id="figAntes"></div><p class="caption"><b>Antes</b> (21). Saem D–C (5) e E–A (7), em vermelho.</p></div>
+  <div><div id="figDepois"></div><p class="caption"><b>Depois</b> (19). Entram D–E (6) e C–A (4).</p></div>
+</div>
+<div class="table-wrap"><table>
+<tr><th>Saem</th><th>Entram</th><th>Δ</th></tr>
+<tr><td>D–C (5), E–A (7)</td><td>D–E (6), C–A (4)</td><td>6 + 4 − 5 − 7 = <b>−2</b></td></tr>
+</table></div>
+<p>Δ negativo: o tour fica mais barato. Novo tour: A → D → <b>E → B → C</b> → A, custo 21 − 2 = 19.</p>
+<p>Repare no trecho do meio. Antes era C → B → E. Agora é E → B → C. O 2-opt <b>percorre o trecho do meio ao contrário</b>.</p>
+<p>Por que só um jeito de religar? Depois de tirar D–C e E–A, sobram dois pedaços: A–D e C–B–E. A outra ligação possível (D com A, C com E) fecharia dois ciclos separados. Isso não é tour.</p>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Tour com arestas (p, q) e (r, s), não vizinhas. O 2-opt tira as duas e coloca (p, r) e (q, s):</p>
+  $$\Delta = c_{pr} + c_{qs} - c_{pq} - c_{rs}$$
+  <p>Se Δ &lt; 0, a troca melhora o tour.</p>
+</div>
+<div class="box warn">
+  <span class="tag">Cuidado</span>
+  <p>O 2-opt troca <b>duas arestas</b>, não duas cidades. Trocar duas cidades de lugar é outro movimento: muda até 4 arestas.</p>
+</div>
+
+<h2 id="viz">2. Todos os vizinhos de um tour</h2>
+<p>Um <b>vizinho</b> é qualquer tour que se obtém com um único movimento 2-opt. Com 5 cidades, o tour tem 5 arestas. Os pares de arestas não vizinhas são 5:</p>
+<div class="table-wrap"><table>
+<tr><th>Saem</th><th>Entram</th><th>Δ</th><th>Novo tour</th></tr>
+<tr><td>A–D (2), C–B (4)</td><td>A–C (4), D–B (7)</td><td class="num">+5</td><td>A C D B E</td></tr>
+<tr><td>A–D (2), B–E (3)</td><td>A–B (3), D–E (6)</td><td class="num">+4</td><td>A B C D E</td></tr>
+<tr><td>D–C (5), B–E (3)</td><td>D–B (7), C–E (7)</td><td class="num">+6</td><td>A D B C E</td></tr>
+<tr style="background:var(--orange-soft)"><td>D–C (5), E–A (7)</td><td>D–E (6), C–A (4)</td><td class="num"><b>−2</b></td><td>A D E B C</td></tr>
+<tr><td>C–B (4), E–A (7)</td><td>C–E (7), B–A (3)</td><td class="num">−1</td><td>A D C E B</td></tr>
+</table></div>
+<p>Dois vizinhos melhoram. Escolhemos o de menor Δ (−2). Isso se chama <b>melhor melhoria</b>. Pegar o primeiro Δ negativo que aparecer também vale: é a <b>primeira melhoria</b>.</p>
+<p>Em geral, um tour com n arestas tem $\dfrac{n(n-3)}{2}$ vizinhos 2-opt. Com n = 5: $\frac{5 \cdot 2}{2} = 5$.</p>
+
+<h2 id="algo">3. O algoritmo, animado</h2>
+<p>Repita: olhe todos os vizinhos; se o melhor tem Δ &lt; 0, faça a troca. Pare quando nenhum vizinho melhora.</p>
+<div class="controls" id="starts"></div>
+<div id="p2opt"></div>
+
+<h2 id="local">4. Ótimo local não é ótimo global</h2>
+<p>Agora rode o 2-opt a partir do tour da melhor inserção (botão acima): A → B → E → C → D → A, custo 20.</p>
+<div class="table-wrap"><table>
+<tr><th>Saem</th><th>Entram</th><th>Δ</th></tr>
+<tr><td>A–B (3), E–C (7)</td><td>A–E (7), B–C (4)</td><td class="num">+1</td></tr>
+<tr><td>A–B (3), C–D (5)</td><td>A–C (4), B–D (7)</td><td class="num">+3</td></tr>
+<tr><td>B–E (3), C–D (5)</td><td>B–C (4), E–D (6)</td><td class="num">+2</td></tr>
+<tr><td>B–E (3), D–A (2)</td><td>B–D (7), E–A (7)</td><td class="num">+9</td></tr>
+<tr><td>E–C (7), D–A (2)</td><td>E–D (6), C–A (4)</td><td class="num">+1</td></tr>
+</table></div>
+<p>Nenhum Δ é negativo. O 2-opt para em 20. Mas o ótimo é 19.</p>
+<div class="figrow">
+  <div><div id="figLocal"></div><p class="caption"><b>Ótimo local</b> (20): nenhum vizinho 2-opt é melhor.</p></div>
+  <div><div id="figGlobal"></div><p class="caption"><b>Ótimo global</b> (19).</p></div>
+</div>
+<div class="box tip">
+  <span class="tag">Definição</span>
+  <ul>
+    <li><b>Ótimo local:</b> nenhum vizinho é melhor que ele.</li>
+    <li><b>Ótimo global:</b> nenhum tour é melhor que ele.</li>
+  </ul>
+  <p>A busca local sempre para num ótimo local. Ele pode ou não ser o global. No slide, o 2-opt chega a 427; o ótimo é 413.</p>
+</div>
+
+<h2 id="lab">5. Laboratório com 30 cidades</h2>
+<p>Pontos no plano, distância em linha reta. Construa um tour e depois rode o 2-opt. Em cada troca, as arestas vermelhas saem e as verdes entram. Repare que o 2-opt desfaz os <b>cruzamentos</b>: duas arestas que se cruzam sempre podem ser trocadas por duas mais curtas.</p>
+<div id="labBox"></div>
+
+<h2 id="cx">6. Complexidade e 3-opt</h2>
+<p>Uma passada do 2-opt olha todos os $\frac{n(n-3)}{2}$ pares de arestas. Cada Δ custa $O(1)$ com a matriz. Inverter o trecho do meio custa $O(n)$.</p>
+<div class="table-wrap"><table>
+<tr><th>Passo</th><th>Custo</th></tr>
+<tr><td>avaliar todos os vizinhos</td><td>$O(n^2)$</td></tr>
+<tr><td>aplicar a melhor troca (inverter o trecho)</td><td>$O(n)$</td></tr>
+<tr><th>uma passada</th><th>$O(n^2)$</th></tr>
+</table></div>
+<p>Quantas passadas? Cada troca diminui o custo, então o processo termina. Mas não há um limite polinomial garantido para o número de passadas. Na prática são poucas.</p>
+<p>O <b>3-opt</b> é a mesma ideia com <b>três arestas</b>. Tirando 3 arestas, sobram 3 pedaços, e há vários jeitos de religá-los:</p>
+<div class="figrow">
+  <div><div id="fig3a"></div><p class="caption">Tour com 8 cidades. Saem 3 arestas (vermelho).</p></div>
+  <div><div id="fig3b"></div><p class="caption">Uma das religações: os pedaços na ordem 1–2, 6–7–8, 3–4–5.</p></div>
+</div>
+<p>Uma passada do 3-opt olha $O(n^3)$ trios de arestas. Ele acha tours melhores que o 2-opt e custa mais.</p>
+
+<h2 id="exato">7. Solução exata</h2>
+<p>Se queremos o ótimo garantido, abrimos mão do tempo polinomial. O método mais usado é a <b>programação linear inteira</b>. Variável $x_{ij} = 1$ se a aresta (i, j) está no tour, 0 se não:</p>
+$$\begin{aligned}
+\min \;& \sum_{(i,j) \in E} c_{ij}\, x_{ij} \\
+\text{s.a. } & \sum_{j \in V \setminus \{i\}} x_{ij} = 2 && \forall\, i \in V \\
+& \sum_{(i,j) \in E(S)} x_{ij} \le |S| - 1 && \forall\, S \subset V \\
+& x_{ij} \in \{0, 1\} && \forall\, (i,j) \in E
+\end{aligned}$$
+<div class="table-wrap"><table>
+<tr><th>Linha</th><th>Em português</th></tr>
+<tr><td>objetivo</td><td>somar o custo das arestas escolhidas e minimizar</td></tr>
+<tr><td>$= 2$</td><td>cada cidade tem exatamente 2 arestas do tour: uma para chegar, uma para sair</td></tr>
+<tr><td>$\le |S| - 1$</td><td>nenhum grupo S de cidades forma um ciclo sozinho (elimina <b>subtours</b>)</td></tr>
+</table></div>
+<div class="figrow">
+  <div><div id="figSub"></div></div>
+  <div><p>Por que a terceira linha? Estes dois triângulos dão grau 2 a todas as cidades. Mas não são um tour. Com S = {1, 2, 3}, há 3 arestas dentro de S, e a restrição exige no máximo $|S| - 1 = 2$.</p></div>
+</div>
+<p>Existe uma restrição para cada subconjunto S: são exponencialmente muitas. Os métodos exatos (branch-and-cut) só adicionam as que são violadas. Com isso, o slide conta a evolução dos recordes:</p>
+<div class="table-wrap"><table>
+<tr><th>Ano</th><th>Ótimo provado para</th></tr>
+<tr><td>1954</td><td>49 cidades (Dantzig, Fulkerson e Johnson)</td></tr>
+<tr><td>1987</td><td>2 392 pontos (Padberg e Rinaldi)</td></tr>
+<tr><td>1998</td><td>13 509 cidades dos EUA (Applegate, Bixby, Chvátal e Cook)</td></tr>
+<tr><td>2006</td><td>85 900 pontos (mesmo grupo)</td></tr>
+</table></div>
+
+<h2 id="resumo">8. Resumo da aula</h2>
+<div class="table-wrap"><table>
+<tr><th>Método</th><th>Tipo</th><th>Custo</th><th>Garante o ótimo?</th><th>No exemplo</th></tr>
+<tr><td>Força bruta</td><td>exato</td><td>$O(n!)$</td><td>sim</td><td>19</td></tr>
+<tr><td>Vizinho mais próximo</td><td>construtiva, gulosa</td><td>$O(n^2)$</td><td>não</td><td>21 (de A)</td></tr>
+<tr><td>Melhor inserção</td><td>construtiva, gulosa</td><td>$O(n^3)$</td><td>não</td><td>20</td></tr>
+<tr><td>2-opt</td><td>busca local</td><td>$O(n^2)$ por passada</td><td>não (ótimo local)</td><td>21 → 19; 20 → 20</td></tr>
+<tr><td>3-opt</td><td>busca local</td><td>$O(n^3)$ por passada</td><td>não</td><td></td></tr>
+<tr><td>Programação linear inteira</td><td>exato</td><td>exponencial no pior caso</td><td>sim</td><td></td></tr>
+</table></div>
+<div class="box prof">
+  <span class="tag">Na prova, escreva</span>
+  <ol>
+    <li>Para uma heurística: pseudocódigo <b>e</b> uma descrição em português (a Lista 2 pede os dois).</li>
+    <li>A complexidade linha a linha, com a representação usada (matriz ou listas).</li>
+    <li>Ao executar: a tabela de cada passo e o custo final <b>com a aresta de volta</b>.</li>
+    <li>Diga que a heurística não garante o ótimo e por quê (escolhas gulosas, ou parada em ótimo local).</li>
+  </ol>
+</div>
+
+<h2 id="quiz">9. Quiz</h2>
+<div id="quizBox"></div>
+
+<h2 id="exercicio">10. Exercício</h2>
+<div class="exercise">
+  <span class="tag">Exercício 10.4</span>
+  <p>Use a matriz do Exercício 10.2 (cidades P, Q, R, S, T).</p>
+  <ol type="a">
+    <li>Pegue o tour P → Q → R → S → T → P. Qual o custo?</li>
+    <li>Liste os 5 vizinhos 2-opt com o Δ de cada um.</li>
+    <li>Rode o 2-opt (melhor melhoria) até parar. Mostre cada troca e o custo final.</li>
+    <li>O tour final é ótimo local? Dá para garantir que é o ótimo global sem testar todos os 12 tours?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide "O Problema do Caixeiro Viajante", Prof. Teobaldo Bulhões, slides 26 a 48 (2-opt, 3-opt, solução exata, evolução dos métodos).</p>
+</div>
+
+<div class="pager">
+  <a href="0009-tsp-melhor-insercao.html"><small>← anterior</small>10.3 Melhor inserção</a>
+  <a class="next" href="0001-conjuntos-disjuntos-listas.html"><small>próxima →</small>Aula 11 · Conjuntos disjuntos</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const M = TSP.M5;
+  const put = (id, node) => document.getElementById(id).append(node);
+  put('figAntes', TSP.draw(M, { tour: ['A', 'D', 'C', 'B', 'E'], del: [['D', 'C'], ['E', 'A']], cand: [['D', 'E'], ['C', 'A']] }));
+  put('figDepois', TSP.draw(M, { tour: ['A', 'D', 'E', 'B', 'C'], add: [['D', 'E'], ['C', 'A']] }));
+  put('figLocal', TSP.draw(M, { tour: ['A', 'B', 'E', 'C', 'D'] }));
+  put('figGlobal', TSP.draw(M, { tour: ['A', 'C', 'B', 'E', 'D'] }));
+
+  const HVM = ['A', 'D', 'C', 'B', 'E'], HMI = ['A', 'B', 'E', 'C', 'D'];
+  const p = StepPlayer.mount(document.getElementById('p2opt'), { code: TSP.OPT2_CODE, steps: TSP.traceTwoOpt(M, HVM), extra: TSP.extra(M), stack: true, speed: 1400 });
+  const starts = document.getElementById('starts');
+  starts.append(APA.el('span', {}, 'Tour inicial: '));
+  [['vizinho mais próximo (21)', HVM], ['melhor inserção (20)', HMI]].forEach(([lab, t], k) => starts.append(APA.el('button', { class: 'btn' + (k === 0 ? ' on' : ''), type: 'button', onclick: (e) => {
+    starts.querySelectorAll('.btn').forEach((b) => b.classList.remove('on')); e.target.classList.add('on');
+    p.load(TSP.traceTwoOpt(M, t));
+  } }, lab)));
+
+  TSP.lab(document.getElementById("labBox"));
+
+  // 3-opt: octógono
+  const oct = { V: [], w: {}, pos: {} };
+  for (let i = 1; i <= 8; i++) { const a = -Math.PI / 2 + (i - 1) * Math.PI / 4; oct.V.push(String(i)); oct.pos[i] = [200 + 130 * Math.cos(a), 150 + 110 * Math.sin(a)]; }
+  const T8 = oct.V.slice();
+  put('fig3a', TSP.draw(oct, { tour: T8, del: [['2', '3'], ['5', '6'], ['8', '1']] }));
+  put('fig3b', TSP.draw(oct, { tour: ['1', '2', '6', '7', '8', '3', '4', '5'], add: [['2', '6'], ['8', '3'], ['5', '1']] }));
+
+  // subtours
+  const sub = { V: ['1', '2', '3', '4', '5', '6'], w: {}, pos: { 1: [60, 60], 2: [170, 60], 3: [115, 160], 4: [270, 60], 5: [380, 60], 6: [325, 160] } };
+  const box = TSP.draw(sub, { tour: ['1', '2', '3'] });
+  put('figSub', box);
+  const box2 = TSP.draw(sub, { tour: ['4', '5', '6'] });
+  const svg = box.querySelector('svg'), first = svg.querySelector('circle');
+  box2.querySelectorAll('svg line').forEach((n) => svg.insertBefore(n, first));
+  svg.querySelectorAll('circle').forEach((c) => c.setAttribute('class', 'in'));
+
+  Quiz.mount(document.getElementById("quizBox"), [
+    { q: 'O que um movimento 2-opt faz?', options: ['Tira duas arestas e religa invertendo o trecho do meio', 'Troca duas cidades de posição', 'Insere duas cidades novas', 'Remove as duas arestas mais caras'], answer: 0,
+      explain: 'Saem (p, q) e (r, s); entram (p, r) e (q, s). O trecho q … r passa a ser percorrido ao contrário.' },
+    { q: 'O 2-opt parou: nenhum vizinho tem Δ < 0. Então o tour é…', options: ['um ótimo local, não necessariamente o global', 'o ótimo global', 'o pior tour possível', 'igual ao do vizinho mais próximo'], answer: 0,
+      explain: 'No exemplo, partindo da melhor inserção, ele para em 20 e o ótimo é 19.' },
+    { q: 'Quantos vizinhos 2-opt tem um tour com 6 cidades?', options: ['9', '15', '6', '12'], answer: 0,
+      explain: '$n(n-3)/2 = 6 \\cdot 3 / 2 = 9$.' },
+    { q: 'Na formulação de PLI, para que serve a restrição $\\sum_{E(S)} x_{ij} \\le |S| - 1$?', options: ['Proibir ciclos menores que não passam por todas as cidades', 'Garantir grau 2 em cada cidade', 'Minimizar o custo', 'Deixar x binário'], answer: 0,
+      explain: 'Só com grau 2, dois triângulos separados seriam aceitos.' },
+  ]);
+});
+</script>
+</body>
+</html>
