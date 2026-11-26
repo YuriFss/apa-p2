@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aula 11.6 · decreaseKey e a conta do Prim</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="../assets/common.js"></script>
+<script defer src="../assets/player.js"></script>
+<script defer src="../assets/graphview.js"></script>
+<script defer src="../assets/heap.js"></script>
+<script defer src="../assets/primheap.js"></script>
+<script defer src="../assets/quiz.js"></script>
+<style>
+.bars { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; margin-top: 12px; }
+.bars .lab { font-size: 14px; min-width: 0; }
+.bars .lab small { display: block; color: var(--muted); font: 12px var(--mono); }
+.bars .track { height: 18px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.bars .fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s; }
+.bars .fill.top { background: var(--orange); }
+.bars .num { font: 13px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 560px) { .bars { grid-template-columns: minmax(0, 1fr) auto; } .bars .track { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← Índice</a>
+  <span>Aula 11 · Árvore Geradora Mínima</span>
+  <span class="spacer"></span>
+  <a href="../reference/aula11.html">Folha de referência</a>
+  <button class="theme-btn" type="button">tema</button>
+</nav>
+<main>
+<p class="kicker">Aula 11 · Lição 6</p>
+<h1>decreaseKey e a conta do Prim</h1>
+<p class="lead">O slide diz que a linha 11 custa $O(A \log V)$. Aqui você vê por quê. Primeiro, o que o decreaseKey faz. Depois, quantas vezes cada linha roda.</p>
+
+<div class="toc">
+  <b>Nesta lição</b>
+  <ol>
+    <li><a href="#fila">Q é um heap mínimo</a></li>
+    <li><a href="#dk">O que o decreaseKey faz</a></li>
+    <li><a href="#log">Por que custa $O(\log V)$</a></li>
+    <li><a href="#vezes">Quantas vezes cada linha roda</a></li>
+    <li><a href="#conta">A conta, linha por linha</a></li>
+    <li><a href="#quiz">Quiz</a> · <a href="#exercicio">Exercício</a></li>
+  </ol>
+</div>
+
+<h2 id="fila">1. Q é um heap mínimo</h2>
+<p>O <code>while</code> faz a mesma pergunta V vezes: "qual vértice de Q tem a menor chave?".</p>
+<p>Para responder rápido, Q é um <b>heap mínimo</b>. Cada nó guarda um vértice e a chave dele.</p>
+<p>A regra do heap: <b>todo nó tem chave menor ou igual à dos filhos</b>. Então a menor chave fica sempre no topo.</p>
+<div id="figQ"></div>
+<p class="caption"><b>Q com 7 vértices.</b> Cada nó mostra <code>vértice:chave</code>. O topo, a:1, é o mínimo. O número pequeno ao lado do nó é a posição no vetor.</p>
+<p>O heap é guardado num vetor. Na posição i, os filhos ficam em $2i+1$ e $2i+2$. O nó de cima fica em $\lfloor (i-1)/2 \rfloor$.</p>
+<div class="box warn">
+  <span class="tag">Cuidado: dois "pais"</span>
+  <p><b>pai[v]</b>, das linhas 3 e 10 do Prim, é o vértice que liga v à árvore geradora.</p>
+  <p><b>Pai no heap</b> é só o nó de cima no vetor de Q. Um não tem nada a ver com o outro.</p>
+</div>
+
+<h2 id="dk">2. O que o decreaseKey faz</h2>
+<p><b>Exemplo.</b> O Prim achou uma aresta de peso 2 até o vértice g. A linha 11 faz <code>chave[g] = 2</code>. Antes, g tinha chave 9.</p>
+<p>Só que g está dentro do heap. Com chave 2, ele fica embaixo de c:3. A regra do heap quebra. O decreaseKey conserta isso.</p>
+<div class="widget">
+  <div class="wtitle">decreaseKey passo a passo</div>
+  <div class="lab-in" id="dkBtns"></div>
+  <div id="dkPlayer"></div>
+  <p class="caption">Laranja = v, o vértice que teve a chave diminuída. Azul = o pai de v no heap, que está sendo comparado. Verde = v chegou ao lugar certo. A tabela <b>pos</b> diz em que posição do vetor cada vértice está.</p>
+</div>
+<p>O primeiro caso, resumido:</p>
+<div class="table-wrap"><table>
+<tr><th>Passo</th><th>O que acontece</th></tr>
+<tr><td>1</td><td>chave[g]: 9 → 2. Agora g:2 está embaixo de c:3.</td></tr>
+<tr><td>2</td><td>pos[g] = 6. Sabemos onde g está sem procurar.</td></tr>
+<tr><td>3</td><td>O pai de g no heap é c:3. 3 &gt; 2, então g e c trocam.</td></tr>
+<tr><td>4</td><td>O novo pai de g é a:1. 1 &gt; 2? Não. Para. Foi 1 troca.</td></tr>
+</table></div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>decreaseKey(v): diminui a chave de v e <b>sobe v, trocando com o pai no heap, enquanto o pai tiver chave maior</b>.</p>
+</div>
+<div class="box warn">
+  <span class="tag">Por que existe o vetor pos</span>
+  <p>Sem pos, achar g no vetor exige olhar posição por posição. Isso custa $O(V)$ e estraga tudo.</p>
+  <p>Com pos, achar g custa $O(1)$. Cada troca atualiza pos dos dois vértices, também em $O(1)$.</p>
+  <p>O teste "v ∈ Q" da linha 9 usa a mesma ideia: um vetor de verdadeiro/falso. Custa $O(1)$.</p>
+</div>
+
+<h2 id="log">3. Por que custa $O(\log V)$</h2>
+<p>Volte à animação e escolha "pior caso". g sobe até o topo e faz 2 trocas.</p>
+<p>Não dá para fazer mais. Cada troca sobe g um nível, e este heap só tem 2 níveis acima da última linha.</p>
+<p>O heap é preenchido nível por nível, da esquerda para a direita. Ele nunca fica torto. Por isso a altura é sempre $\lfloor \log_2 V \rfloor$:</p>
+<div class="table-wrap"><table>
+<tr><th class="num">V (nós no heap)</th><th class="num">altura = máximo de trocas</th></tr>
+<tr><td class="num">7</td><td class="num">2</td></tr>
+<tr><td class="num">15</td><td class="num">3</td></tr>
+<tr><td class="num">1.000</td><td class="num">9</td></tr>
+<tr><td class="num">1.000.000</td><td class="num">19</td></tr>
+</table></div>
+<div class="box tip">
+  <span class="tag">Regra</span>
+  <p>Um decreaseKey faz no máximo $\lfloor \log_2 V \rfloor$ trocas. Custa $O(\log V)$.</p>
+  <p>O EXTRACT_MIN da linha 7 é parecido, só que descendo: tira o topo, põe o último no lugar e desce trocando. Também custa $O(\log V)$. A <a href="0005-complexidade-kruskal-prim.html#prim">lição 5</a> mostra ele animado.</p>
+</div>
+
+<h2 id="vezes">4. Quantas vezes cada linha roda</h2>
+<p>Agora o Prim inteiro, num grafo com V = 5 e A = 7. Rode até o fim e olhe os contadores.</p>
+<div class="widget">
+  <div class="wtitle">MST-PRIM com Q em heap mínimo</div>
+  <div id="primPlayer"></div>
+  <p class="caption">Grafo: verde = já saiu de Q; laranja = u atual; azul = vizinho em exame. Heap: laranja = nó que está subindo ou descendo.</p>
+</div>
+<p>No fim da animação:</p>
+<div class="table-wrap"><table>
+<tr><th>Contador</th><th class="num">Neste grafo</th><th>Por quê</th></tr>
+<tr><td>extractMin (linha 7)</td><td class="num">5</td><td>= V. Cada vértice sai de Q uma vez.</td></tr>
+<tr><td>visitas em Adj (linha 8)</td><td class="num">14</td><td>= 2A. É a soma dos graus.</td></tr>
+<tr><td>decreaseKey (linha 11)</td><td class="num">7</td><td>≤ A. No máximo um por aresta.</td></tr>
+</table></div>
+<p><b>Por que no máximo um decreaseKey por aresta?</b> Veja a aresta A–C. Ela é vista duas vezes:</p>
+<ul>
+  <li>Quando A sai de Q. C ainda está em Q. O teste pode passar.</li>
+  <li>Quando C sai de Q. Mas A já saiu. O teste "A ∈ Q" falha.</li>
+</ul>
+<p>Na segunda visita o teste sempre falha. Então cada aresta dispara no máximo um decreaseKey.</p>
+<p class="caption">Mesmo se você contar 2A decreaseKeys, a resposta não muda: $O(2A \log V) = O(A \log V)$.</p>
+
+<h2 id="conta">5. A conta, linha por linha</h2>
+<p>Agora junte as duas coisas: quantas vezes a linha roda e quanto custa cada vez.</p>
+<div class="table-wrap"><table>
+<tr><th>Linha</th><th>Quantas vezes</th><th>Custo de cada</th><th>Total</th></tr>
+<tr><td>1–3</td><td>V</td><td>$O(1)$</td><td>$O(V)$</td></tr>
+<tr><td>4</td><td>1</td><td>$O(1)$</td><td>$O(1)$</td></tr>
+<tr><td>5 (montar o heap)</td><td>1</td><td>$O(V)$</td><td>$O(V)$</td></tr>
+<tr><td>6</td><td>V + 1</td><td>$O(1)$</td><td>$O(V)$</td></tr>
+<tr><td>7 (EXTRACT_MIN)</td><td>V</td><td>$O(\log V)$</td><td>$O(V \log V)$</td></tr>
+<tr><td>8 (próximo vizinho)</td><td>2A</td><td>$O(1)$</td><td>$O(A)$</td></tr>
+<tr><td>9 (teste)</td><td>2A</td><td>$O(1)$</td><td>$O(A)$</td></tr>
+<tr><td>10</td><td>até A</td><td>$O(1)$</td><td>$O(A)$</td></tr>
+<tr class="hot"><td>11 (decreaseKey)</td><td>até A</td><td>$O(\log V)$</td><td>$O(A \log V)$</td></tr>
+</table></div>
+<p>É a mesma coluna "custo" do slide. Somando:</p>
+<p>$$O(V) + O(V \log V) + O(A) + O(A \log V)$$</p>
+<p>O grafo é conexo, então $A \ge V - 1$. Logo $V \log V$ não passa de $(A + 1) \log V$. Todo termo cabe dentro de $A \log V$:</p>
+<p class="result">Prim com listas + heap binário: $O(A \log V)$</p>
+
+<div class="widget">
+  <div class="wtitle">A conta com números (pior caso, em passos)</div>
+  <div class="lab-in">
+    <label>V = <input id="cV" type="number" value="1000" min="2"></label>
+    <label>A = <input id="cA" type="number" value="5000" min="1"></label>
+    <span id="cErr" class="caption"></span>
+  </div>
+  <div id="cOut"></div>
+  <p class="caption" id="cInfo"></p>
+</div>
+
+<h2 id="quiz">6. Quiz</h2>
+<div id="quiz"></div>
+
+<h2 id="exercicio">7. Exercício</h2>
+<div class="box">
+  <span class="tag">Exercício</span>
+  <p>Q é este vetor (vértice:chave): <code>[h:1, a:3, b:2, c:7, d:4, e:5, f:6, g:8]</code>.</p>
+  <ol>
+    <li>Desenhe Q como árvore.</li>
+    <li>Faça decreaseKey(Q, g, 0). Escreva o vetor depois de cada troca. Quantas trocas foram?</li>
+    <li>Um heap com 8 vértices pode precisar de mais trocas que isso? Por quê?</li>
+    <li>Um grafo tem V = 100 e A = 300. No máximo, quantas trocas todos os decreaseKey do Prim fazem juntos?</li>
+  </ol>
+  <p class="caption">Responda no chat.</p>
+</div>
+
+<div class="box">
+  <span class="tag">Fonte</span>
+  <p>Slide da Aula 11, parte "Algoritmo de Prim", complexidade de cada linha (<a href="../materiais/aula-11/11-arvore-geradora-minima.html">abrir</a>). Cormen, 3ª ed., seções 6.5 (filas de prioridade) e 23.2. Ficou alguma dúvida? Pergunte no chat.</p>
+</div>
+
+<div class="pager">
+  <a href="0005-complexidade-kruskal-prim.html"><small>← anterior</small>11.5 Complexidade do Kruskal e do Prim</a>
+  <a class="next" href="0006-prova-simulada-aula11.html"><small>próxima →</small>Prova simulada da Aula 11</a>
+</div>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = (t, a, txt) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
+  const fmt = (k) => (k === Infinity ? '∞' : String(k));
+
+  // KeyHeap: heap mínimo de vértices; os nós deslizam quando trocam de lugar.
+  function KeyHeap() {
+    const el = APA.el('div', { class: 'heapview' }), svg = S('svg', { class: 'tree heaptree', role: 'img', 'aria-label': 'Q desenhado como árvore' });
+    const arr = APA.el('div', { class: 'hv-arr' });
+    el.append(APA.el('div', { class: 'hv-tree' }, svg), arr);
+    let cur = null, raf = 0;
+    const R = 21, DY = 64;
+    const geo = (n) => { const d = Math.floor(Math.log2(n)) + 1, W = Math.max(320, 2 ** (d - 1) * 58);
+      return { W, H: d * DY + 10, at: (i) => { const k = Math.floor(Math.log2(i + 1)), p = i + 1 - 2 ** k; return [((p + 0.5) * W) / 2 ** k, k * DY + R + 14]; } }; };
+    const cellCls = { hot: 'cmp', cold: 'cur', ok: 'ok' };
+
+    function draw(P, st, g) {
+      svg.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
+      svg.replaceChildren();
+      const n = st.order.length;
+      for (let i = 1; i < n; i++) { const [x1, y1] = g.at((i - 1) >> 1), [x2, y2] = g.at(i); svg.append(S('line', { x1, y1, x2, y2 })); }
+      for (let i = 0; i < n; i++) { const [x, y] = g.at(i); svg.append(S('text', { x: x + R + 2, y: y - R + 2, class: 'idx' }, String(i))); }
+      for (const v of st.order) {
+        const [x, y] = P[v], n2 = S('g', { class: (st.marks || {})[v] || '' });
+        n2.append(S('circle', { cx: x, cy: y, r: R }), S('text', { x, y }, `${v}:${fmt(st.key[v])}`));
+        svg.append(n2);
+      }
+    }
+    function drawArrays(st) {
+      const q = APA.el('div', { class: 'arr' }, APA.el('span', { class: 'name' }, 'Q'));
+      st.order.forEach((v, i) => q.append(APA.el('div', { class: 'slot' }, APA.el('span', { class: 'idx' }, String(i)),
+        APA.el('div', { class: 'cell ' + (cellCls[(st.marks || {})[v]] || '') }, `${v}:${fmt(st.key[v])}`), APA.el('span', { class: 'ptr' }, ''))));
+      const p = APA.el('div', { class: 'arr' }, APA.el('span', { class: 'name' }, 'pos'));
+      st.order.slice().sort().forEach((v) => p.append(APA.el('div', { class: 'slot' }, APA.el('span', { class: 'idx' }, v),
+        APA.el('div', { class: 'cell ' + (cellCls[(st.marks || {})[v]] || '') }, String(st.order.indexOf(v))), APA.el('span', { class: 'ptr' }, ''))));
+      arr.replaceChildren(q, p);
+    }
+    function set(st) {
+      cancelAnimationFrame(raf);
+      const g = geo(st.order.length), L = {};
+      st.order.forEach((v, i) => (L[v] = g.at(i)));
+      drawArrays(st);
+      const same = cur && Object.keys(cur).length === st.order.length && st.order.every((v) => cur[v]);
+      if (!same || matchMedia('(prefers-reduced-motion: reduce)').matches) { cur = L; return draw(L, st, g); }
+      const from = cur, t0 = performance.now(), T = 550, ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+      const frame = (now) => {
+        const t = Math.min(1, (now - t0) / T), e = ease(t), P = {};
+        for (const v in L) P[v] = [from[v][0] + (L[v][0] - from[v][0]) * e, from[v][1] + (L[v][1] - from[v][1]) * e];
+        cur = P; draw(P, st, g);
+        if (t < 1) raf = requestAnimationFrame(frame); else cur = L;
+      };
+      raf = requestAnimationFrame(frame);
+    }
+    return { el, set };
+  }
+
+  const DK_CODE = ['decreaseKey(Q, v, k)', 'chave[v] = k', 'i = pos[v]                       ▸ onde v está no vetor',
+    'while i > 0 and chave[Q[(i−1)/2]] > chave[Q[i]] do', '    trocar Q[i] com Q[(i−1)/2]   ▸ e atualiza pos dos dois', '    i = (i−1)/2                  ▸ divisão inteira'];
+
+  function traceDK(order0, key0, v, k) {
+    const Q = order0.slice(), key = { ...key0 }, out = [];
+    let i = null, t = 0;
+    const snap = (line, note, marks) => out.push({ line, note, vars: { v, i: i == null ? '—' : i, [`chave[${v}]`]: fmt(key[v]), trocas: t },
+      hs: { order: Q.slice(), key: { ...key }, marks } });
+    snap(null, `Antes. ${v} está com chave ${fmt(key[v])}. A linha 11 do Prim quer mudar para ${k}.`, { [v]: 'hot' });
+    const old = key[v], p0 = Q.indexOf(v), up0 = Q[(p0 - 1) >> 1];
+    key[v] = k;
+    snap(1, `chave[${v}]: ${fmt(old)} → ${k}. ` + (p0 > 0 && key[up0] > k ? `Agora ${v}:${k} está embaixo de ${up0}:${key[up0]}. A regra do heap quebrou.` : 'A regra do heap continua valendo.'), { [v]: 'hot' });
+    i = p0;
+    snap(2, `pos[${v}] = ${i}: ${v} está na posição ${i} do vetor. Não precisa procurar.`, { [v]: 'hot' });
+    for (;;) {
+      if (i === 0) { snap(3, `i = 0: ${v} chegou ao topo. Para.`, { [v]: 'ok' }); break; }
+      const p = (i - 1) >> 1, up = Q[p];
+      if (key[up] <= key[v]) { snap(3, `Pai de ${v} no heap: posição ${p}, ${up}:${key[up]}. ${key[up]} &gt; ${key[v]}? <b>Não</b>. O heap está certo de novo. Para.`, { [v]: 'ok', [up]: 'cold' }); break; }
+      snap(3, `Pai de ${v} no heap: posição ⌊(${i}−1)/2⌋ = ${p}, ${up}:${key[up]}. ${key[up]} &gt; ${key[v]}? <b>Sim</b>. Precisa trocar.`, { [v]: 'hot', [up]: 'cold' });
+      [Q[i], Q[p]] = [Q[p], Q[i]]; t++;
+      snap(4, `${v} e ${up} trocam de lugar. pos[${v}] = ${p} e pos[${up}] = ${i}.`, { [v]: 'hot', [up]: 'cold' });
+      i = p;
+      snap(5, `i = ${p}. ${v} subiu um nível.`, { [v]: 'hot' });
+    }
+    const n = Q.length, h = Math.floor(Math.log2(n));
+    snap(null, `Fim: <b>${t} troca(s)</b>. Este heap tem ${n} nós e altura ⌊log₂ ${n}⌋ = ${h}. Nunca passa de ${h} trocas.`, { [v]: 'ok' });
+    return out;
+  }
+
+  const ORDER = ['a', 'b', 'c', 'd', 'e', 'f', 'g'], KEY = { a: 1, b: 4, c: 3, d: 8, e: 6, f: 7, g: 9 };
+  document.getElementById('figQ').append(HeapView.render(ORDER.map((v) => `${v}:${KEY[v]}`), { name: 'Q' }));
+
+  const hv = KeyHeap();
+  const dk = StepPlayer.mount(document.getElementById('dkPlayer'), { code: DK_CODE, stack: true, speed: 1400,
+    steps: traceDK(ORDER, KEY, 'g', 2), extra: (st, box) => { hv.set(st.hs); box.append(hv.el); } });
+  const db = document.getElementById('dkBtns');
+  [['g: 9 → 2 (sobe 1 nível)', 'g', 2], ['g: 9 → 0 (pior caso: sobe até o topo)', 'g', 0], ['e: 6 → 5 (não sobe)', 'e', 5]].forEach(([lab, v, k], n) =>
+    db.append(APA.el('button', { class: 'btn' + (n ? '' : ' on'), type: 'button', onclick: (e) => {
+      [...db.children].forEach((b) => b.classList.remove('on')); e.target.classList.add('on'); dk.load(traceDK(ORDER, KEY, v, k)); } }, lab)));
+
+  const G = { pos: { A: [60, 40], C: [220, 40], B: [60, 180], D: [220, 180], E: [360, 110] },
+    edges: [['A', 'B', 4], ['A', 'C', 1], ['B', 'C', 2], ['B', 'D', 5], ['C', 'D', 8], ['C', 'E', 6], ['D', 'E', 3]] };
+  StepPlayer.mount(document.getElementById('primPlayer'), { code: PrimHeap.CODE, stack: true, speed: 1300,
+    steps: PrimHeap.trace(G, 'A'), extra: (st, box) => PrimHeap.draw(G, st, box) });
+
+  const cV = document.getElementById('cV'), cA = document.getElementById('cA');
+  const nf = (x) => x.toLocaleString('pt-BR');
+  function calc() {
+    const V = Number(cV.value), A = Number(cA.value), err = document.getElementById('cErr');
+    const ok = Number.isInteger(V) && Number.isInteger(A) && V >= 2 && A >= V - 1 && A <= V * (V - 1) / 2;
+    err.textContent = ok ? '' : `Grafo conexo e simples: precisa de V ≥ 2 e V − 1 ≤ A ≤ V(V − 1)/2.`;
+    if (!ok) return;
+    const lg = Math.floor(Math.log2(V));
+    const rows = [['linhas 1–6', 'inicializar, montar Q, testar o while', '3V + 2', 3 * V + 2],
+      ['linha 7', 'EXTRACT_MIN: V vezes, até ⌊log₂V⌋ trocas', `V · ${lg}`, V * lg],
+      ['linhas 8–10', 'visitar vizinho e testar', '2A', 2 * A],
+      ['linha 11', 'decreaseKey: até A vezes, até ⌊log₂V⌋ trocas', `A · ${lg}`, A * lg]];
+    const max = Math.max(...rows.map((r) => r[3])), total = rows.reduce((s, r) => s + r[3], 0);
+    const box = APA.el('div', { class: 'bars' });
+    rows.forEach(([a, b, f, x]) => box.append(APA.el('div', { class: 'lab' }, a, APA.el('small', {}, b)),
+      APA.el('div', { class: 'track' }, APA.el('div', { class: 'fill' + (x === max ? ' top' : ''), style: `width:${(100 * x / max).toFixed(1)}%` })),
+      APA.el('div', { class: 'num' }, `${f} = ${nf(x)}`)));
+    document.getElementById('cOut').replaceChildren(box);
+    document.getElementById('cInfo').textContent = A * lg >= V * lg
+      ? `Total ≈ ${nf(total)} passos. A barra laranja (linha 11) é a maior. Por isso o Prim é O(A log V). Aumente A e veja ela crescer.`
+      : `Total ≈ ${nf(total)} passos. Com A = V − 1 as linhas 7 e 11 quase empatam: V log V e A log V são do mesmo tamanho.`;
+  }
+  cV.addEventListener('input', calc); cA.addEventListener('input', calc); calc();
+
+  Quiz.mount(document.getElementById('quiz'), [
+    { q: 'O decreaseKey sobe v enquanto…',
+      options: ['o pai de v no heap tem chave maior', 'pai[v] do Prim tem chave maior', 'v ainda tem filhos', 'a chave de v é ∞'], answer: 0,
+      explain: 'É o pai no heap (nó de cima no vetor), não o pai[v] da árvore geradora.' },
+    { q: 'Q tem 31 vértices. No máximo, quantas trocas um decreaseKey faz?',
+      options: ['4', '5', '30', '31'], answer: 0,
+      explain: 'Altura = ⌊log₂ 31⌋ = 4. Cada troca sobe um nível.' },
+    { q: 'Sem o vetor pos, quanto custaria um decreaseKey?',
+      options: ['$O(V)$', '$O(\\log V)$', '$O(1)$', '$O(A)$'], answer: 0,
+      explain: 'Achar v no vetor custaria O(V). Depois, subir custa O(log V). O(V) domina.' },
+    { q: 'Por que a linha 11 roda no máximo A vezes?',
+      options: ['na 2ª visita da aresta, o outro lado já saiu de Q', 'porque o heap tem A nós', 'porque cada vértice tem grau 1', 'porque A ≤ V'], answer: 0,
+      explain: 'Cada aresta é vista duas vezes. Na segunda, o teste "v ∈ Q" falha.' },
+    { q: 'Por que $O(V \\log V)$ some dentro de $O(A \\log V)$?',
+      options: ['grafo conexo: A ≥ V − 1', 'porque V é sempre pequeno', 'porque log V ≤ A', 'porque EXTRACT_MIN é O(1)'], answer: 0,
+      explain: 'Com A ≥ V − 1, V log V ≤ (A + 1) log V.' },
+  ]);
+});
+</script>
+</body>
+</html>
